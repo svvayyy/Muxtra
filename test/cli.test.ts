@@ -329,7 +329,10 @@ describe("Muxtra", () => {
     const bin = path.join(repository, "test-bin");
     await mkdir(bin);
     const fakeClaude = path.join(bin, "claude");
-    await writeFile(fakeClaude, "#!/bin/sh\nsleep 1.5\n");
+    await writeFile(
+      fakeClaude,
+      "#!/bin/sh\nwhile [ ! -f .muxtra-test-complete ]; do sleep 0.05; done\n",
+    );
     await chmod(fakeClaude, 0o755);
     const environment = {
       ...process.env,
@@ -382,6 +385,7 @@ describe("Muxtra", () => {
       { agentActivity: { phase: "working", observedState: "running", alive: true } },
     ]);
 
+    await writeFile(path.join(worktree, ".muxtra-test-complete"), "done\n");
     await completed;
   });
 
