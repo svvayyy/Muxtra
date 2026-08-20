@@ -1,10 +1,16 @@
-# Muxtra
+<p align="center">
+  <img src="https://raw.githubusercontent.com/svvayyy/Muxtra/main/website/assets/readme-header.png" alt="Muxtra — Many agents. One codebase." width="100%">
+</p>
+
+<p align="center">
+  <a href="https://muxtra.dev">Website</a> ·
+  <a href="#quick-start-for-people">Quick start</a> ·
+  <a href="#design-and-code-lanes">Design and code lanes</a>
+</p>
 
 Muxtra lets coding agents from different providers work on the same project at the same
 time. It keeps every agent isolated while it works, tracks overlapping changes, and is
 being built to reconcile their completed work into one verified result.
-
-[Website](https://muxtra.dev) · [Quick start](#quick-start-for-people) · [Design-and-code lanes](#design-and-code-lanes)
 
 The repository owns the workflow. A committed project contract defines setup commands, checks, Git policy, runtime configuration, and production safeguards. Each task receives its own branch and worktree so concurrent agents do not overwrite one another's source code.
 

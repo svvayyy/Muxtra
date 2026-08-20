@@ -14,8 +14,12 @@
   "homepage": "https://muxtra.dev",
   "keywords": [
     "ai-agents",
+    "claude-code",
     "cli",
+    "codex",
+    "coding-agents",
     "git",
+    "parallel-agents",
     "worktrees",
     "developer-tools"
   ],
@@ -44,12 +48,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepack": "npm run build",
+    "prepublishOnly": "pnpm test",
     "pretest": "pnpm build",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "engines": {
     "node": ">=20"
