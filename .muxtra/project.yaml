@@ -1,0 +1,36 @@
+version: 1
+project:
+  name: muxtra
+repository:
+  default_branch: main
+runtime:
+  install: pnpm install
+  development: pnpm dev
+  healthcheck: /
+  port_env: PORT
+  environment:
+    provider: inherit
+    target: development
+  copy_into_workspaces: []
+checks:
+  - pnpm typecheck
+  - pnpm test
+  - pnpm build
+lanes:
+  design:
+    agent: claude
+  code:
+    agent: codex
+git:
+  branch_prefix: agent
+  agents_may_commit: true
+  agents_may_push_feature_branches: true
+  direct_push_to_main: false
+  force_push: false
+providers:
+  vercel:
+    enabled: false
+    production_branch: main
+production:
+  requires_approval: true
+  deploy_by_merging: true

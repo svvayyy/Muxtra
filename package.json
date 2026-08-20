@@ -1,0 +1,70 @@
+{
+  "name": "muxtra",
+  "version": "0.1.0",
+  "description": "Run coding agents from different providers in parallel without losing their work.",
+  "license": "MIT",
+  "author": "Muxtra contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svvayyy/Muxtra.git"
+  },
+  "bugs": {
+    "url": "https://github.com/svvayyy/Muxtra/issues"
+  },
+  "homepage": "https://muxtra.dev",
+  "keywords": [
+    "ai-agents",
+    "cli",
+    "git",
+    "worktrees",
+    "developer-tools"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "muxtra": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "prebuild": "node scripts/clean.mjs",
+    "build": "tsc -p tsconfig.json",
+    "postbuild": "node scripts/make-executable.mjs",
+    "dev": "tsx src/cli.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepack": "npm run build",
+    "pretest": "pnpm build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^14.0.2",
+    "yaml": "^2.8.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "prettier": "3.9.6",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.8"
+  },
+  "packageManager": "pnpm@10.20.0"
+}

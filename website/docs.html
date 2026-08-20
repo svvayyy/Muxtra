@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a090d" />
+    <meta
+      name="description"
+      content="Learn how to install Muxtra, run coding agents in isolated workspaces, verify their work, and combine the result safely."
+    />
+    <link rel="canonical" href="https://muxtra.dev/docs.html" />
+    <link rel="icon" href="assets/muxtra-icon.png" />
+    <link rel="apple-touch-icon" href="assets/muxtra-icon.png" />
+    <link rel="stylesheet" href="styles.css?v=20260816-3" />
+    <title>Documentation — Muxtra</title>
+  </head>
+  <body class="content-page docs-page">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header" data-header>
+      <div class="shell nav-shell">
+        <a class="brand" href="index.html" aria-label="Muxtra home">
+          <span class="brand-mark" aria-hidden="true"
+            ><img src="assets/muxtra-mark.svg" alt=""
+          /></span>
+          <span>Muxtra</span>
+        </a>
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="site-nav"
+          data-nav-toggle
+        >
+          <span class="sr-only">Toggle navigation</span><span></span><span></span>
+        </button>
+        <nav id="site-nav" class="site-nav" aria-label="Primary" data-nav>
+          <a href="index.html#product">Product</a>
+          <a href="docs.html" aria-current="page">Docs</a>
+          <a href="changelog.html">Changelog</a>
+          <a href="about.html">About</a>
+          <a
+            class="nav-github"
+            href="https://github.com/svvayyy/Muxtra"
+            target="_blank"
+            rel="noreferrer"
+            >GitHub <span aria-hidden="true">↗</span></a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="docs-main">
+      <header class="page-hero docs-hero">
+        <div class="shell">
+          <div class="page-label"><span aria-hidden="true"></span>Documentation</div>
+          <h1>Parallel agents,<br />without the Git homework.</h1>
+          <p>
+            Start with a task in plain language. Muxtra handles isolated workspaces, project
+            context, verification, and safe composition.
+          </p>
+        </div>
+      </header>
+
+      <div class="shell docs-layout">
+        <aside class="docs-sidebar" aria-label="Documentation sections">
+          <nav>
+            <span>Start here</span>
+            <a href="#overview">How Muxtra works</a>
+            <a href="#install">Install</a>
+            <a href="#first-run">Your first parallel run</a>
+            <span>Core workflow</span>
+            <a href="#lanes">Design and code lanes</a>
+            <a href="#workflow">Finish and combine</a>
+            <a href="#providers">Agent providers</a>
+            <a href="#project-contract">Project contract</a>
+            <a href="#development">Development servers</a>
+            <span>Reference</span>
+            <a href="#commands">Command reference</a>
+            <a href="#agents">For coding agents</a>
+            <a href="#troubleshooting">Troubleshooting</a>
+          </nav>
+        </aside>
+
+        <article class="docs-content">
+          <section id="overview" class="docs-section">
+            <div class="section-kicker">Start here</div>
+            <h2>How Muxtra works</h2>
+            <p class="docs-lede">
+              Muxtra gives each coding agent an isolated Git worktree, launches it with the
+              repository’s operating rules, and only combines work that has passed your project
+              checks.
+            </p>
+            <div class="concept-grid">
+              <article>
+                <span>01</span>
+                <h3>Describe</h3>
+                <p>
+                  Give each agent a focused task. You never need to name a branch or choose a
+                  worktree path.
+                </p>
+              </article>
+              <article>
+                <span>02</span>
+                <h3>Run</h3>
+                <p>
+                  Every task receives its own clean workspace, so agents can edit simultaneously
+                  without overwriting one another.
+                </p>
+              </article>
+              <article>
+                <span>03</span>
+                <h3>Verify</h3>
+                <p>
+                  Muxtra checks committed work against the recorded base and your repository’s test,
+                  typecheck, and build commands.
+                </p>
+              </article>
+              <article>
+                <span>04</span>
+                <h3>Combine</h3>
+                <p>
+                  A temporary integration workspace proves that the tasks work together before your
+                  primary project advances.
+                </p>
+              </article>
+            </div>
+            <div class="docs-callout">
+              <strong>The important part</strong>
+              <p>
+                Task branches are retained, failed combinations never touch your primary checkout,
+                and Muxtra never force-pushes your work.
+              </p>
+            </div>
+          </section>
+
+          <section id="install" class="docs-section">
+            <div class="section-kicker">Installation</div>
+            <h2>Install from source</h2>
+            <p>
+              Muxtra currently requires Node.js 20 or newer, Git, and pnpm. Clone the repository,
+              build it, and link the global executable:
+            </p>
+            <pre class="code-block"><code>git clone https://github.com/svvayyy/Muxtra.git
+cd Muxtra
+pnpm install
+pnpm build
+npm link</code></pre>
+            <p>
+              Confirm that the executable is available and that your machine can safely operate the
+              current project:
+            </p>
+            <pre class="code-block"><code>muxtra --version
+muxtra doctor</code></pre>
+          </section>
+
+          <section id="first-run" class="docs-section">
+            <div class="section-kicker">Quick start</div>
+            <h2>Your first parallel run</h2>
+            <p>
+              Open an existing Git project with at least one commit. Prepare it once, then start a
+              task:
+            </p>
+            <pre class="code-block"><code>cd your-project
+muxtra setup
+muxtra start "Build the dashboard navigation" --agent codex</code></pre>
+            <p>In another terminal, send a separate task to a different provider:</p>
+            <pre class="code-block"><code>muxtra start "Add dashboard search" --agent claude
+muxtra status</code></pre>
+            <div class="docs-note">
+              <strong>You stay in your normal project.</strong> Muxtra generates the internal names,
+              branches, and workspace locations. Use <code>muxtra status --details</code> only when
+              you want the Git diagnostics.
+            </div>
+          </section>
+
+          <section id="lanes" class="docs-section">
+            <div class="section-kicker">Design + code</div>
+            <h2>Give each responsibility the right model</h2>
+            <p>
+              The design lane owns UI, frontend implementation, responsive behavior, and
+              accessibility. The code lane owns backend logic, state, data, integrations,
+              architecture, and tests. Each lane can use a different CLI provider and an exact
+              model—or rely on that provider’s default model.
+            </p>
+            <pre
+              class="code-block"
+            ><code>muxtra lanes set design --agent claude --model &lt;claude-model&gt;
+muxtra lanes set code --agent codex --model &lt;codex-model&gt;
+muxtra lanes
+
+muxtra team "Build account settings"</code></pre>
+            <p>
+              <code>muxtra team</code> creates two linked, isolated workspaces and prints one
+              <code>muxtra launch</code> command for each native CLI. After both agents commit and
+              finish verification, run the exact two-task <code>muxtra combine</code> command shown
+              in the output.
+            </p>
+            <div class="docs-note">
+              <strong>Personal choices stay local.</strong> Lane preferences are stored in Muxtra’s
+              machine-local state, so choosing a model does not dirty the project. Teams can commit
+              shared provider defaults in <code>.muxtra/project.yaml</code>.
+            </div>
+          </section>
+
+          <section id="workflow" class="docs-section">
+            <div class="section-kicker">Core workflow</div>
+            <h2>Finish, verify, and combine</h2>
+            <p>
+              When an agent has committed its changes, it runs <code>muxtra finish</code>. Muxtra
+              requires a clean workspace, verifies that it is ahead of and fresh against its
+              recorded base, runs configured checks, records the exact verified commit, and releases
+              the agent’s active claims.
+            </p>
+            <pre class="code-block"><code>muxtra finish dashboard-navigation
+muxtra finish dashboard-search
+muxtra combine</code></pre>
+            <p>
+              <code>muxtra combine</code> creates a temporary composition, merges the selected
+              verified tasks, runs the project checks again, and only then advances the primary
+              project. If a merge or combined-only check fails, your main checkout remains
+              untouched.
+            </p>
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Command</th>
+                  <th>What it changes</th>
+                  <th>What it protects</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>finish</code></td>
+                  <td>Records one verified commit</td>
+                  <td>Rejects dirty, stale, uncommitted, or unchecked work</td>
+                </tr>
+                <tr>
+                  <td><code>combine</code></td>
+                  <td>Advances the primary project after checks pass</td>
+                  <td>Uses a disposable integration workspace first</td>
+                </tr>
+                <tr>
+                  <td><code>remove</code></td>
+                  <td>Removes a managed workspace</td>
+                  <td>Refuses uncommitted changes and keeps its branch</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="providers" class="docs-section">
+            <div class="section-kicker">Providers</div>
+            <h2>Use the agent that fits the task</h2>
+            <p>
+              Muxtra can directly launch Codex CLI and Claude Code. The workspace and committed
+              project workflow are supplied automatically, and the agent keeps its complete native
+              interface for reasoning, tool calls, approvals, and conversation.
+            </p>
+            <pre class="code-block"><code>muxtra start "Fix the checkout" --agent codex
+muxtra launch checkout-polish --agent claude --model &lt;model&gt; --prompt "Polish the final UI"</code></pre>
+            <p>
+              For ChatGPT or another client Muxtra cannot launch directly, generate a portable
+              handoff and paste it into that client:
+            </p>
+            <pre
+              class="code-block"
+            ><code>muxtra instructions checkout-polish --agent chatgpt</code></pre>
+            <div class="docs-note">
+              <strong>Muxtra currently ships as a CLI.</strong> Agent conversation stays inside the
+              provider’s native interface; Muxtra coordinates workspaces and outcomes without
+              capturing or storing it.
+            </div>
+          </section>
+
+          <section id="project-contract" class="docs-section">
+            <div class="section-kicker">Repository contract</div>
+            <h2>One committed source of truth</h2>
+            <p>
+              <code>muxtra init</code> creates <code>.muxtra/project.yaml</code>. Commit it so every
+              person and agent receives the same install command, development command, healthcheck,
+              checks, branch policy, and production rules.
+            </p>
+            <pre class="code-block"><code>version: 1
+project:
+  name: example-app
+runtime:
+  install: pnpm install
+  development: pnpm dev
+  healthcheck: /
+  port_env: PORT
+checks:
+  - pnpm typecheck
+  - pnpm test
+  - pnpm build
+lanes:
+  design:
+    agent: claude
+  code:
+    agent: codex
+git:
+  branch_prefix: agent
+  direct_push_to_main: false
+  force_push: false</code></pre>
+            <p>
+              The contract contains commands and policy—not credentials. Machine-local task state is
+              stored in the repository’s shared Git directory; managed worktrees and logs live under
+              <code>~/.muxtra/</code> by default.
+            </p>
+          </section>
+
+          <section id="development" class="docs-section">
+            <div class="section-kicker">Local runtime</div>
+            <h2>Development servers per workspace</h2>
+            <p>
+              Start, inspect, and stop the configured development server without guessing ports or
+              log locations:
+            </p>
+            <pre class="code-block"><code>muxtra dev dashboard-navigation
+muxtra status
+muxtra logs dashboard-navigation
+muxtra stop dashboard-navigation</code></pre>
+            <p>
+              Muxtra allocates a port, records the process and log, and waits for the configured
+              health URL. From inside a registered worktree, the workspace name is inferred.
+            </p>
+          </section>
+
+          <section id="commands" class="docs-section">
+            <div class="section-kicker">Reference</div>
+            <h2>Command reference</h2>
+            <div class="command-list">
+              <div>
+                <code>muxtra setup</code>
+                <p>Prepare the current Git project for the guided workflow.</p>
+              </div>
+              <div>
+                <code>muxtra start &lt;task&gt; [--agent &lt;agent&gt;] [--lane design|code]</code>
+                <p>Create an isolated task and launch its agent.</p>
+              </div>
+              <div>
+                <code>muxtra lanes [set design|code ...]</code>
+                <p>View or save local provider and model defaults for each responsibility.</p>
+              </div>
+              <div>
+                <code>muxtra team &lt;task&gt;</code>
+                <p>Create linked design and code tasks in separate isolated workspaces.</p>
+              </div>
+              <div>
+                <code>muxtra status [--details] [--fetch] [--json]</code>
+                <p>Show active tasks, readiness, freshness, and optional Git diagnostics.</p>
+              </div>
+              <div>
+                <code>muxtra finish [name]</code>
+                <p>Verify and record the exact committed result of one workspace.</p>
+              </div>
+              <div>
+                <code>muxtra combine [names...]</code>
+                <p>Compose verified tasks and apply them only after all checks pass.</p>
+              </div>
+              <div>
+                <code>muxtra launch [name] [--model &lt;model&gt;] [--prompt &lt;task&gt;]</code>
+                <p>Launch an agent in an existing workspace with its operational context.</p>
+              </div>
+              <div>
+                <code>muxtra instructions [name]</code>
+                <p>Print a portable handoff for a remote or unsupported client.</p>
+              </div>
+              <div>
+                <code>muxtra enter &lt;name&gt; --agent &lt;agent&gt;</code>
+                <p>Create a lower-level managed worktree and branch.</p>
+              </div>
+              <div>
+                <code>muxtra adopt &lt;path&gt; --agent &lt;agent&gt;</code>
+                <p>Register an existing worktree without moving or modifying it.</p>
+              </div>
+              <div>
+                <code>muxtra claim &lt;paths...&gt;</code>
+                <p>Publish intended file ownership so overlapping agent work is visible.</p>
+              </div>
+              <div>
+                <code>muxtra who</code>
+                <p>Show active path claims and their last heartbeat.</p>
+              </div>
+              <div>
+                <code>muxtra build</code>
+                <p>Run project checks and relate failing paths to active claims.</p>
+              </div>
+              <div>
+                <code>muxtra dev / logs / stop</code>
+                <p>Manage a workspace’s recorded local development process.</p>
+              </div>
+              <div>
+                <code>muxtra remove &lt;name&gt;</code>
+                <p>Safely remove or unregister a workspace while retaining its branch.</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="agents" class="docs-section">
+            <div class="section-kicker">Agent protocol</div>
+            <h2>Muxtra is designed for agents to use, too</h2>
+            <p>
+              Launch instructions tell agents to inspect project context, claim paths before
+              editing, use the managed development lifecycle, commit their work, and finish
+              verification. Add the protocol to <code>AGENTS.md</code> only when you want it
+              committed to the repository:
+            </p>
+            <pre class="code-block"><code>muxtra agent-guide
+muxtra install-guide
+# or during initialization
+muxtra init --install-guide</code></pre>
+            <p>
+              Claims are advisory leases, not locks. They reveal overlapping intent without
+              preventing legitimate collaboration, and they expire when an agent stops sending
+              heartbeats.
+            </p>
+          </section>
+
+          <section id="troubleshooting" class="docs-section">
+            <div class="section-kicker">Troubleshooting</div>
+            <h2>When something is not ready</h2>
+            <div class="troubleshooting-list">
+              <details>
+                <summary><code>finish</code> says the workspace is dirty</summary>
+                <p>
+                  Commit or intentionally discard the workspace changes first. Muxtra never guesses
+                  which uncommitted work should become the deliverable.
+                </p>
+              </details>
+              <details>
+                <summary>The workspace is stale</summary>
+                <p>
+                  Refresh against the recorded base, resolve the update inside the task workspace,
+                  rerun checks, and finish again. Use
+                  <code>muxtra status --fetch --details</code> for the underlying refs.
+                </p>
+              </details>
+              <details>
+                <summary>A combined check fails</summary>
+                <p>
+                  Your primary checkout is still unchanged. Fix one or more task branches, finish
+                  them again, and rerun <code>muxtra combine</code>. Use
+                  <code>muxtra combine --abort</code> to discard an unfinished temporary
+                  composition.
+                </p>
+              </details>
+              <details>
+                <summary>An agent cannot be launched directly</summary>
+                <p>
+                  Run <code>muxtra instructions &lt;name&gt; --agent &lt;client&gt;</code> and paste
+                  the generated context into that client.
+                </p>
+              </details>
+            </div>
+          </section>
+        </article>
+      </div>
+    </main>
+
+    <footer class="site-footer content-footer">
+      <div class="shell footer-grid">
+        <div>
+          <a class="brand footer-brand" href="index.html"
+            ><span class="brand-mark" aria-hidden="true"
+              ><img src="assets/muxtra-mark.svg" alt="" /></span
+            ><span>Muxtra</span></a
+          >
+          <p>Parallel coding agents without crossed wires.</p>
+        </div>
+        <div class="footer-links">
+          <a href="index.html#product">Product</a><a href="docs.html">Docs</a
+          ><a href="changelog.html">Changelog</a><a href="about.html">About</a
+          ><a href="privacy.html">Privacy</a><a href="https://github.com/svvayyy/Muxtra">GitHub</a>
+        </div>
+      </div>
+      <div class="shell footer-bottom">
+        <span>© <span data-year></span> Muxtra</span><span>Built in parallel.</span>
+      </div>
+    </footer>
+    <script src="script.js?v=20260816-3"></script>
+  </body>
+</html>

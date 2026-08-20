@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a090d" />
+    <meta
+      name="description"
+      content="Give UI and backend work to different coding agents and models. Muxtra isolates each CLI task, verifies it, and combines the result safely."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Muxtra" />
+    <meta property="og:title" content="Muxtra — Many agents. One codebase." />
+    <meta
+      property="og:description"
+      content="Choose separate design and code models. Muxtra runs their CLIs in isolated workspaces and brings the verified result back together."
+    />
+    <meta property="og:url" content="https://muxtra.dev/" />
+    <meta property="og:image" content="https://muxtra.dev/assets/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Muxtra — Many agents. One codebase." />
+    <meta
+      name="twitter:description"
+      content="Different models for design and code. One verified result."
+    />
+    <meta name="twitter:image" content="https://muxtra.dev/assets/og.png" />
+    <link rel="canonical" href="https://muxtra.dev/" />
+    <link rel="icon" href="assets/muxtra-icon.png" />
+    <link rel="apple-touch-icon" href="assets/muxtra-icon.png" />
+    <link rel="preload" as="image" href="assets/hero-lake.jpg" />
+    <link rel="stylesheet" href="styles.css?v=20260816-3" />
+    <script src="script.js?v=20260816-3" defer></script>
+    <title>Muxtra — Many agents. One codebase.</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header" data-header>
+      <div class="shell nav-shell">
+        <a class="brand" href="#top" aria-label="Muxtra home">
+          <span class="brand-mark" aria-hidden="true">
+            <img src="assets/muxtra-mark.svg" alt="" />
+          </span>
+          <span>Muxtra</span>
+        </a>
+
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="site-nav"
+          data-nav-toggle
+        >
+          <span class="sr-only">Toggle navigation</span>
+          <span></span><span></span>
+        </button>
+
+        <nav id="site-nav" class="site-nav" aria-label="Primary" data-nav>
+          <a href="#product">Product</a>
+          <a href="docs.html">Docs</a>
+          <a href="changelog.html">Changelog</a>
+          <a href="about.html">About</a>
+          <a
+            class="nav-github"
+            href="https://github.com/svvayyy/Muxtra"
+            target="_blank"
+            rel="noreferrer"
+            >GitHub <span aria-hidden="true">↗</span></a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section id="top" class="hero section-pad">
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="shell hero-copy reveal">
+          <div class="hero-meta">
+            <span class="hero-meta-rule" aria-hidden="true"></span>
+            <span>Open source · CLI-first</span>
+          </div>
+          <h1>
+            Many agents.<br />
+            <span>One codebase.</span>
+          </h1>
+          <p class="hero-lede">
+            Choose one model for design and frontend work and another for backend and logic. Muxtra
+            gives each CLI an isolated copy of your project, then brings the verified work together.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#workflow">
+              See how it works <span aria-hidden="true">↓</span>
+            </a>
+            <a
+              class="button button-secondary"
+              href="https://github.com/svvayyy/Muxtra"
+              target="_blank"
+              rel="noreferrer"
+            >
+              View on GitHub <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <p class="hero-note">You do not need to know anything about Git.</p>
+        </div>
+
+        <div class="shell hero-stage reveal" id="product">
+          <div class="lane lane-one" aria-hidden="true"></div>
+          <div class="lane lane-two" aria-hidden="true"></div>
+          <div class="lane lane-three" aria-hidden="true"></div>
+
+          <div class="agent-float agent-float-claude">
+            <img src="assets/agents/claude.png" alt="" />
+            <span>Claude Code</span>
+            <i>Working</i>
+          </div>
+          <div class="agent-float agent-float-codex">
+            <img src="assets/agents/codex-white.png" alt="" />
+            <span>Codex</span>
+            <i>Ready</i>
+          </div>
+          <div class="agent-float agent-float-future">
+            <img src="assets/muxtra-mark.svg" alt="" />
+            <span>More CLIs</span>
+            <i>Coming next</i>
+          </div>
+
+          <div class="app-frame hero-cli-frame">
+            <div class="terminal-card" aria-label="Muxtra design and code lane workflow">
+              <div class="terminal-top">
+                <div class="traffic-lights" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </div>
+                <span>muxtra — zsh</span>
+                <span aria-hidden="true"></span>
+              </div>
+              <pre><code><span class="prompt">$</span> muxtra lanes
+<span class="muted">LANE     AGENT    MODEL</span>
+<span class="violet">design</span>   claude   claude-opus-4.1
+<span class="green">code</span>     codex    gpt-5.6-codex
+
+<span class="prompt">$</span> muxtra team <span class="violet">"Build account settings"</span>
+<span class="muted">✓ Design workspace ready · Claude Code</span>
+<span class="muted">✓ Code workspace ready · Codex</span>
+<span class="green">Two focused agents. One coordinated feature.</span></code></pre>
+              <div class="terminal-status">
+                <span><i></i> Primary project safe</span>
+                <span>2 isolated workspaces</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="shell provider-row reveal" role="group" aria-label="Supported coding agents">
+          <span>Built to work across agents</span>
+          <div>
+            <span><img src="assets/agents/claude.png" alt="" />Claude Code</span>
+            <span><img src="assets/agents/codex-white.png" alt="" />Codex</span>
+            <span class="provider-more">More coming</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-pad isolation-section">
+        <div class="shell split-layout">
+          <div class="section-copy reveal">
+            <div class="section-kicker">Isolation by default</div>
+            <h2>Same project.<br />Separate worlds.</h2>
+            <p>
+              Every task gets its own branch and worktree automatically. Agents can edit, run, and
+              test simultaneously without overwriting the files another agent is using.
+            </p>
+            <ul class="feature-list">
+              <li><span>01</span> One isolated workspace per task</li>
+              <li><span>02</span> Overlapping edits surfaced early</li>
+              <li><span>03</span> Your primary project stays untouched</li>
+            </ul>
+          </div>
+
+          <div
+            class="isolation-visual reveal"
+            role="img"
+            aria-label="Three isolated agent tasks converge into one result"
+          >
+            <div class="visual-grid" aria-hidden="true"></div>
+            <div class="task-track track-claude">
+              <div class="track-head">
+                <img src="assets/agents/claude.png" alt="" />
+                <span>Checkout redesign</span>
+                <i>agent/claude</i>
+              </div>
+              <div class="code-line line-wide"></div>
+              <div class="code-line line-medium"></div>
+              <div class="code-line line-short"></div>
+            </div>
+            <div class="task-track track-codex">
+              <div class="track-head">
+                <img src="assets/agents/codex-white.png" alt="" />
+                <span>Flaky tests</span>
+                <i>agent/codex</i>
+              </div>
+              <div class="code-line line-medium"></div>
+              <div class="code-line line-wide"></div>
+              <div class="code-line line-short"></div>
+            </div>
+            <div class="task-track track-future">
+              <div class="track-head">
+                <img src="assets/muxtra-mark.svg" alt="" />
+                <span>Product tour</span>
+                <i>next agent</i>
+              </div>
+              <div class="code-line line-short"></div>
+              <div class="code-line line-wide"></div>
+              <div class="code-line line-medium"></div>
+            </div>
+            <div class="merge-node">
+              <span class="mini-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+              <strong>One verified result</strong>
+              <small>All checks passed</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="workflow" class="section-pad workflow-section">
+        <div class="shell">
+          <div class="section-heading reveal">
+            <div>
+              <div class="section-kicker">The workflow</div>
+              <h2>Describe the work.<br />Muxtra handles the machinery.</h2>
+            </div>
+            <p>
+              Pick the right provider and model for each responsibility. Muxtra handles the
+              worktrees, shared context, verification, and safe composition from the terminal.
+            </p>
+          </div>
+
+          <div class="workflow-steps reveal">
+            <article>
+              <span>01</span>
+              <h3>Choose your lanes</h3>
+              <p>Set a design model, a code model, or use one provider for both.</p>
+            </article>
+            <article>
+              <span>02</span>
+              <h3>Work in native CLIs</h3>
+              <p>
+                Keep every provider’s full TUI, reasoning, tool calls, approvals, and conversation.
+              </p>
+            </article>
+            <article>
+              <span>03</span>
+              <h3>Combine safely</h3>
+              <p>Muxtra checks the combined result before your primary project advances.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-pad attention-section">
+        <div class="shell attention-grid">
+          <div class="attention-screen reveal">
+            <div class="terminal-card" aria-label="Muxtra overlap warning">
+              <div class="terminal-top">
+                <div class="traffic-lights" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </div>
+                <span>muxtra status</span>
+                <span aria-hidden="true"></span>
+              </div>
+              <pre><code><span class="muted">DESIGN</span>  account-settings-design
+<span class="muted">CODE</span>    account-settings-code
+
+<span class="violet">Overlap detected</span>
+src/settings/schema.ts
+
+<span class="muted">Coordinate the shared contract before combining.</span></code></pre>
+            </div>
+          </div>
+          <div class="section-copy reveal">
+            <div class="section-kicker amber">When paths cross</div>
+            <h2>Nothing gets quietly overwritten.</h2>
+            <p>
+              Isolation prevents accidental live edits. Claims make overlapping intent visible, and
+              guarded composition catches conflicts that only appear when finished work meets.
+            </p>
+            <div class="signal-card">
+              <span class="signal-icon">!</span>
+              <div>
+                <strong>Another task is changing the same files</strong>
+                <small>Muxtra tells you where the work overlaps.</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="cli" class="section-pad cli-section">
+        <div class="shell cli-grid">
+          <div class="section-copy reveal">
+            <div class="section-kicker">One command, two focused lanes</div>
+            <h2>Native agent CLIs.<br />Muxtra coordination.</h2>
+            <p>
+              Prompt, approve tools, and follow reasoning in each agent's complete native interface.
+              Use Muxtra to coordinate their workspaces, checks, conflicts, and final result.
+            </p>
+            <div class="cli-actions">
+              <a
+                class="text-link"
+                href="https://github.com/svvayyy/Muxtra#quick-start-for-people"
+                target="_blank"
+                rel="noreferrer"
+                >Read the quick start <span aria-hidden="true">↗</span></a
+              >
+            </div>
+          </div>
+
+          <div class="terminal-card reveal">
+            <div class="terminal-top">
+              <div class="traffic-lights" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <span>muxtra — zsh</span>
+              <button type="button" data-copy-command aria-label="Copy Muxtra start command">
+                Copy
+              </button>
+            </div>
+            <pre><code><span class="prompt">$</span> muxtra setup
+<span class="muted">✓ Project ready</span>
+
+<span class="prompt">$</span> muxtra team <span class="violet">"Build the checkout"</span>
+<span class="muted">✓ Design workspace · Claude Code</span>
+<span class="muted">✓ Code workspace · Codex</span>
+
+<span class="prompt">$</span> muxtra launch checkout-design
+<span class="prompt">$</span> muxtra launch checkout-code
+
+<span class="prompt">$</span> muxtra combine
+<span class="green">✓ 2 tasks · 2 agents · all checks passed</span></code></pre>
+            <div class="terminal-status">
+              <span><i></i> Primary project safe</span>
+              <span>0 conflicts</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-pad principles-section">
+        <div class="shell">
+          <div class="section-heading reveal">
+            <div>
+              <div class="section-kicker">Built around the work</div>
+              <h2>More progress.<br />Less orchestration.</h2>
+            </div>
+          </div>
+          <div class="principle-grid reveal">
+            <article>
+              <span class="principle-mark">↗↗</span>
+              <h3>Provider independent</h3>
+              <p>
+                Use the coding agents you prefer instead of committing your workflow to one vendor.
+              </p>
+            </article>
+            <article>
+              <span class="principle-mark">⌁</span>
+              <h3>Git without the homework</h3>
+              <p>
+                Branches and worktrees stay underneath a workflow people can actually understand.
+              </p>
+            </article>
+            <article>
+              <span class="principle-mark">✓</span>
+              <h3>Verified before combined</h3>
+              <p>Repository-owned checks decide when finished work is ready to come together.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-pad faq-section">
+        <div class="shell faq-grid">
+          <div class="section-copy reveal">
+            <div class="section-kicker">Common questions</div>
+            <h2>Good to know.</h2>
+          </div>
+          <div class="faq-list reveal">
+            <details>
+              <summary>Do I need to understand Git worktrees?</summary>
+              <p>
+                No. Muxtra creates and names the branches and workspaces for you. Run
+                <code>muxtra status</code> for task status in plain language.
+              </p>
+            </details>
+            <details>
+              <summary>Can agents from different providers work together?</summary>
+              <p>
+                Yes. Muxtra is designed around the repository, not a single model provider. Claude
+                Code and Codex CLI are supported today, with more adapters planned.
+              </p>
+            </details>
+            <details>
+              <summary>Can two agents edit the same file?</summary>
+              <p>
+                They can work independently without overwriting each other. Muxtra surfaces
+                overlapping claims and stops unsafe combinations when Git or your checks find a
+                conflict.
+              </p>
+            </details>
+            <details>
+              <summary>Is Muxtra open source?</summary>
+              <p>Yes. The Muxtra CLI is available on GitHub under the MIT License.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="final-cta section-pad">
+        <div class="shell final-card reveal">
+          <div class="final-glow" aria-hidden="true"></div>
+          <span class="final-icon"><img src="assets/muxtra-mark.svg" alt="" /></span>
+          <h2>Give every agent room to work.</h2>
+          <p>One repo. Parallel tasks. One verified result.</p>
+          <div class="hero-actions">
+            <a
+              class="button button-primary"
+              href="https://github.com/svvayyy/Muxtra"
+              target="_blank"
+              rel="noreferrer"
+              >Get Muxtra on GitHub <span aria-hidden="true">↗</span></a
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <a class="brand footer-brand" href="#top">
+            <span class="brand-mark" aria-hidden="true">
+              <img src="assets/muxtra-mark.svg" alt="" />
+            </span>
+            <span>Muxtra</span>
+          </a>
+          <p>Parallel coding agents without crossed wires.</p>
+        </div>
+        <div class="footer-links">
+          <a href="#product">Product</a>
+          <a href="docs.html">Docs</a>
+          <a href="changelog.html">Changelog</a>
+          <a href="about.html">About</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="https://github.com/svvayyy/Muxtra">GitHub</a>
+          <a href="https://github.com/svvayyy/Muxtra/blob/main/LICENSE">MIT License</a>
+        </div>
+      </div>
+      <div class="shell footer-bottom">
+        <span>© <span data-year></span> Muxtra</span>
+        <span>Built in parallel.</span>
+      </div>
+    </footer>
+  </body>
+</html>
