@@ -28,8 +28,8 @@
     <link rel="icon" href="assets/muxtra-icon.png" />
     <link rel="apple-touch-icon" href="assets/muxtra-icon.png" />
     <link rel="preload" as="image" href="assets/hero-lake.jpg" />
-    <link rel="stylesheet" href="styles.css?v=20260816-3" />
-    <script src="script.js?v=20260816-3" defer></script>
+    <link rel="stylesheet" href="styles.css?v=20260821-1" />
+    <script src="script.js?v=20260821-1" defer></script>
     <title>Muxtra — Many agents. One codebase.</title>
   </head>
   <body>
@@ -87,17 +87,20 @@
             Choose one model for design and frontend work and another for backend and logic. Muxtra
             gives each CLI an isolated copy of your project, then brings the verified work together.
           </p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="#workflow">
-              See how it works <span aria-hidden="true">↓</span>
-            </a>
-            <a
-              class="button button-secondary"
-              href="https://github.com/svvayyy/Muxtra"
-              target="_blank"
-              rel="noreferrer"
+          <div class="hero-actions hero-install-actions">
+            <button
+              class="hero-install-command"
+              type="button"
+              data-copy-command
+              data-command="npm install --global muxtra@beta"
+              aria-label="Copy npm install command"
             >
-              View on GitHub <span aria-hidden="true">↗</span>
+              <span class="install-prompt" aria-hidden="true">$</span>
+              <code>npm install --global muxtra@beta</code>
+              <span class="install-copy" data-copy-label aria-live="polite">Copy</span>
+            </button>
+            <a class="button button-secondary hero-docs-link" href="docs.html#install">
+              View docs <span aria-hidden="true">→</span>
             </a>
           </div>
           <p class="hero-note">You do not need to know anything about Git.</p>
@@ -320,7 +323,12 @@ src/settings/schema.ts
                 <span></span><span></span><span></span>
               </div>
               <span>muxtra — zsh</span>
-              <button type="button" data-copy-command aria-label="Copy Muxtra start command">
+              <button
+                type="button"
+                data-copy-command
+                data-command='muxtra start "Fix the checkout" --agent codex'
+                aria-label="Copy Muxtra start command"
+              >
                 Copy
               </button>
             </div>
