@@ -143,8 +143,10 @@
             <pre class="code-block"><code>npm install --global muxtra@beta
 muxtra --version</code></pre>
             <p>
-              Beta releases use npm's <code>beta</code> tag, so they do not replace the default
-              <code>latest</code> release.
+              Beta releases use npm's <code>beta</code> tag. Because this is Muxtra's first npm
+              release, npm also resolves the untagged package name to this build until a stable
+              release exists. Use <code>muxtra@beta</code> to stay on the intended prerelease
+              channel.
             </p>
             <p>
               Then open the Git project you want to use and confirm that Muxtra can safely operate
