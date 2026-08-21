@@ -46,8 +46,10 @@ npm install --global muxtra@beta
 muxtra --version
 ```
 
-Beta releases are published under npm's `beta` tag and do not replace the default
-`latest` release. Expect the CLI to evolve as the workflow is tested in real projects.
+Beta releases are published under npm's `beta` tag. Because this is Muxtra's first npm
+release, npm also resolves the untagged package name to this build until a stable release
+exists. Use `muxtra@beta` to stay on the intended prerelease channel, and expect the CLI
+to evolve as the workflow is tested in real projects.
 
 To build Muxtra itself from source, see [Development](#development).
 
