@@ -24,7 +24,7 @@ Muxtra is for developers and teams that want to run Claude Code, OpenAI Codex CL
 ## Core workflow
 
 1. Run `muxtra setup` once in an existing Git project with at least one commit. This creates and commits `.muxtra/project.yaml`, the repository-owned workflow contract.
-2. Start a task with a command such as `muxtra start "Build the dashboard navigation" --agent codex`.
+2. Start a task with a short tracking title, such as `muxtra start "Build the dashboard navigation" --agent codex`. The title names the workspace, branch, and status entry; it is not sent as the agent's first user prompt. Give the agent the full request after it opens, or use `--prompt` explicitly to send one immediately.
 3. Start other tasks or providers in parallel. Every task works in a separate branch and Git worktree.
 4. Inspect all tasks with `muxtra status`.
 5. Agents commit their work and run `muxtra finish`. Muxtra verifies that the workspace is clean, current, ahead of its recorded base, not serving a development process, and passing the configured checks.
@@ -86,6 +86,8 @@ Install the beta from npm:
 npm install --global muxtra@beta
 muxtra --version
 ```
+
+Update an npm installation to the newest beta release with `muxtra update`.
 
 Build from source:
 

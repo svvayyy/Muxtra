@@ -10,7 +10,7 @@ export interface WorkspaceRecord {
   id: string;
   name: string;
   agent: string;
-  /** The user's plain-language assignment. Used by the CLI today and the app later. */
+  /** User-facing task title for tracking and status; never an implicit agent prompt. */
   task?: string;
   /** Optional user-facing title; `name` remains the stable CLI identifier. */
   displayName?: string;

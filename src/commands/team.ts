@@ -18,7 +18,7 @@ export interface TeamOptions {
 /** Creates two coordinated but isolated tasks. The user launches each in its own terminal. */
 export async function teamCommand(
   cwd: string,
-  prompt: string,
+  title: string,
   options: TeamOptions,
 ): Promise<{ design: WorkspaceRecord; code: WorkspaceRecord }> {
   const { root, config } = await loadConfig(cwd);
@@ -43,7 +43,7 @@ export async function teamCommand(
   );
   const teamId = randomUUID();
 
-  const design = await startCommand(root, prompt, {
+  const design = await startCommand(root, title, {
     ...designSelection,
     lane: "design",
     base: options.base,
@@ -54,7 +54,7 @@ export async function teamCommand(
   });
   let code: WorkspaceRecord;
   try {
-    code = await startCommand(root, prompt, {
+    code = await startCommand(root, title, {
       ...codeSelection,
       lane: "code",
       base: options.base,

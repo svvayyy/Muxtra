@@ -81,7 +81,7 @@ afterEach(async () => {
 });
 
 describe("Muxtra", () => {
-  it("sets up a project and starts a plain-language task without exposing Git", async () => {
+  it("uses the start argument as tracking metadata instead of an agent prompt", async () => {
     const repository = await createRepository();
     const setup = await exec(process.execPath, [cli, "setup"], repository);
 
@@ -106,7 +106,9 @@ describe("Muxtra", () => {
       [cli, "launch", "polish-the-dashboard-navigation", "--dry-run"],
       repository,
     );
-    expect(launchPreview.stdout).toContain("User task:\nPolish the dashboard navigation");
+    expect(launchPreview.stdout).not.toContain("User task:");
+    expect(launchPreview.stdout).toContain("ask the user what they want to work on");
+    expect(launchPreview.stdout).toContain("workspace title is tracking metadata");
 
     const status = await exec(process.execPath, [cli, "status", "--json"], repository);
     expect(jsonData(status.stdout)).toMatchObject([
@@ -123,6 +125,33 @@ describe("Muxtra", () => {
     expect(friendlyStatus.stdout).toContain("Polish the dashboard navigation");
     expect(friendlyStatus.stdout).toContain("ready to start");
     expect(friendlyStatus.stdout).not.toContain("agent/codex/");
+  });
+
+  it("rejects an initial prompt when start is not launching the agent", async () => {
+    const repository = await createRepository();
+    await exec(process.execPath, [cli, "setup"], repository);
+
+    await expect(
+      exec(
+        process.execPath,
+        [
+          cli,
+          "start",
+          "Dashboard navigation",
+          "--agent",
+          "codex",
+          "--prompt",
+          "Implement the responsive navigation from the design system.",
+          "--no-launch",
+        ],
+        repository,
+      ),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining("cannot be combined with --no-launch"),
+    });
+
+    const status = await exec(process.execPath, [cli, "status", "--json"], repository);
+    expect(jsonData(status.stdout)).toEqual([]);
   });
 
   it("keeps beginner setup on the repository's primary branch", async () => {
@@ -264,6 +293,36 @@ describe("Muxtra", () => {
     expect(workspaces.every((workspace) => workspace.agentActivity === null)).toBe(true);
     expect(workspaces[0].peerWorkspaces).toHaveLength(1);
     expect(workspaces[1].peerWorkspaces).toHaveLength(1);
+
+    for (const workspace of ["build-account-settings-design", "build-account-settings-code"]) {
+      const preview = await exec(
+        process.execPath,
+        [cli, "launch", workspace, "--dry-run"],
+        repository,
+      );
+      expect(preview.stdout).not.toContain("User task:");
+      expect(preview.stdout).toContain("workspace title is tracking metadata");
+    }
+  });
+
+  it("updates the npm installation from the beta channel outside a Git project", async () => {
+    const fakeBin = await mkdtemp(path.join(os.tmpdir(), "muxtra-update-test-"));
+    temporaryDirectories.push(fakeBin);
+    const npmExecutable = path.join(fakeBin, process.platform === "win32" ? "npm.cmd" : "npm");
+    const executableBody =
+      process.platform === "win32"
+        ? "@echo off\r\necho %*\r\n"
+        : '#!/usr/bin/env node\nconsole.log(process.argv.slice(2).join(" "));\n';
+    await writeFile(npmExecutable, executableBody);
+    if (process.platform !== "win32") await chmod(npmExecutable, 0o755);
+
+    const result = await exec(process.execPath, [cli, "update"], fakeBin, {
+      PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.stdout).toContain("Updating Muxtra from the npm beta channel");
+    expect(result.stdout).toContain("install --global muxtra@beta");
+    expect(result.stdout).toContain("Muxtra update complete");
   });
 
   it("keeps image attachments with the task and hands them to the agent", async () => {
@@ -843,7 +902,7 @@ describe("Muxtra", () => {
     expect(preview.stdout).toContain("Agent: codex");
     expect(preview.stdout).toContain("Executable: codex");
     expect(preview.stdout).toContain('Start the project with "muxtra dev"');
-    expect(preview.stdout).toContain("Polish the dashboard navigation");
+    expect(preview.stdout).toContain("User task:\nPolish the dashboard navigation");
   });
 
   it("finds the primary Vercel link when dev is invoked inside a worktree", async () => {

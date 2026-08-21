@@ -18,7 +18,7 @@ export async function statusCommand(
   }
 
   if (statuses.length === 0) {
-    console.log('No active tasks. Start one with: muxtra start "Describe the task" --agent codex');
+    console.log('No active tasks. Start one with: muxtra start "Short task title" --agent codex');
     return;
   }
 
