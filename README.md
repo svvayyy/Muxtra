@@ -15,7 +15,7 @@ able to combine their completed work into one verified result.
 The repository owns the workflow. A committed project contract defines setup commands, checks, Git policy, runtime configuration, and production safeguards. Each task receives its own branch and worktree so concurrent agents do not overwrite one another's source code.
 
 > [!IMPORTANT]
-> This is an early functional preview intended for local testing. It combines verified
+> Muxtra is currently in public beta. It combines verified
 > local task branches, but does not push branches, open pull requests, or deploy releases.
 
 ## Features
@@ -42,9 +42,12 @@ The repository owns the workflow. A committed project contract defines setup com
 Muxtra requires Node.js 20 or newer and Git:
 
 ```bash
-npm install --global muxtra
+npm install --global muxtra@beta
 muxtra --version
 ```
+
+Beta releases are published under npm's `beta` tag and do not replace the default
+`latest` release. Expect the CLI to evolve as the workflow is tested in real projects.
 
 To build Muxtra itself from source, see [Development](#development).
 
