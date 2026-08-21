@@ -3,7 +3,7 @@ import path from "node:path";
 import { stringify } from "yaml";
 import { configExists } from "../config.js";
 import { CliError } from "../errors.js";
-import { gitBranch, gitRoot } from "../git.js";
+import { defaultBranch, gitRoot } from "../git.js";
 import { installGuidePointer } from "../agentGuide.js";
 import { projectConfigSchema } from "../config.js";
 
@@ -44,8 +44,7 @@ export async function initCommand(
   }
 
   const name = path.basename(root);
-  const currentBranch = await gitBranch(root);
-  const defaultBranch = currentBranch === "(detached)" ? "main" : currentBranch;
+  const primaryBranch = await defaultBranch(root);
   const detected = await detectPackageCommands(root);
   const configDirectory = path.join(root, ".muxtra");
   await mkdir(configDirectory, { recursive: true });
@@ -53,7 +52,7 @@ export async function initCommand(
   const config = {
     version: 1,
     project: { name },
-    repository: { default_branch: defaultBranch },
+    repository: { default_branch: primaryBranch },
     runtime: {
       ...(detected.install ? { install: detected.install } : {}),
       ...(detected.development ? { development: detected.development } : {}),
@@ -80,7 +79,7 @@ export async function initCommand(
     providers: {
       vercel: {
         enabled: false,
-        production_branch: defaultBranch,
+        production_branch: primaryBranch,
       },
     },
     production: {

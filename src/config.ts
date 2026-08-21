@@ -113,7 +113,7 @@ export async function loadConfig(cwd: string): Promise<LoadedConfig> {
   if (!configPath) {
     throw new CliError(
       `No Muxtra project contract found at ${path.join(root, ".muxtra", "project.yaml")}. ` +
-        'Run "muxtra init" first.',
+        'Run "muxtra setup" first. Use "muxtra init" only when you want to configure and commit the contract manually.',
     );
   }
   source = await readFile(configPath, "utf8");

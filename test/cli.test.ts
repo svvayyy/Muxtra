@@ -86,6 +86,7 @@ describe("Muxtra", () => {
     const setup = await exec(process.execPath, [cli, "setup"], repository);
 
     expect(setup.stdout).toContain("Muxtra is ready");
+    expect(setup.stdout).toContain('Committed .muxtra/project.yaml as "Configure Muxtra"');
     expect(await readFile(path.join(repository, ".muxtra", "project.yaml"), "utf8")).toContain(
       "default_branch: main",
     );
@@ -122,6 +123,61 @@ describe("Muxtra", () => {
     expect(friendlyStatus.stdout).toContain("Polish the dashboard navigation");
     expect(friendlyStatus.stdout).toContain("ready to start");
     expect(friendlyStatus.stdout).not.toContain("agent/codex/");
+  });
+
+  it("keeps beginner setup on the repository's primary branch", async () => {
+    const repository = await createRepository();
+    await exec("git", ["switch", "-c", "feature/setup-test"], repository);
+
+    await expect(exec(process.execPath, [cli, "setup"], repository)).rejects.toMatchObject({
+      stderr: expect.stringContaining("Run Muxtra setup from the primary branch (main)"),
+    });
+    await expect(access(path.join(repository, ".muxtra", "project.yaml"))).rejects.toThrow();
+  });
+
+  it("does not call a project ready or start work until checks are configured", async () => {
+    const repository = await createRepository();
+    await writeFile(
+      path.join(repository, "package.json"),
+      JSON.stringify({ name: "example", packageManager: "pnpm@10.20.0", scripts: {} }),
+    );
+    await exec("git", ["add", "package.json"], repository);
+    await exec("git", ["commit", "-m", "Remove project checks"], repository);
+
+    const setup = await exec(process.execPath, [cli, "setup"], repository);
+    expect(setup.stdout).not.toContain("Muxtra is ready");
+    expect(setup.stderr).toContain("Muxtra needs at least one project check");
+
+    await expect(
+      exec(
+        process.execPath,
+        [cli, "start", "Build the dashboard", "--agent", "codex", "--no-launch"],
+        repository,
+      ),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining("No project checks are configured"),
+    });
+  });
+
+  it("directs unconfigured projects to the beginner setup command", async () => {
+    const repository = await createRepository();
+    await expect(
+      exec(
+        process.execPath,
+        [cli, "start", "Build the dashboard", "--agent", "codex", "--no-launch"],
+        repository,
+      ),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining('Run "muxtra setup" first'),
+    });
+  });
+
+  it("shows the core workflow first in top-level help", async () => {
+    const help = await exec(process.execPath, [cli, "--help"], projectRoot);
+    const orderedCommands = ["setup", "agents", "start", "status", "finish", "combine"];
+    const positions = orderedCommands.map((command) => help.stdout.indexOf(`  ${command}`));
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((left, right) => left - right));
   });
 
   it("routes design and code tasks to locally configured models", async () => {

@@ -135,21 +135,16 @@
 
           <section id="install" class="docs-section">
             <div class="section-kicker">Installation</div>
-            <h2>Install from source</h2>
+            <h2>Install Muxtra</h2>
+            <p>Muxtra requires Node.js 20 or newer and Git. Install the public CLI with npm:</p>
+            <pre class="code-block"><code>npm install --global muxtra
+muxtra --version</code></pre>
             <p>
-              Muxtra currently requires Node.js 20 or newer, Git, and pnpm. Clone the repository,
-              build it, and link the global executable:
+              Then open the Git project you want to use and confirm that Muxtra can safely operate
+              it:
             </p>
-            <pre class="code-block"><code>git clone https://github.com/svvayyy/Muxtra.git
-cd Muxtra
-pnpm install
-pnpm build
-npm link</code></pre>
-            <p>
-              Confirm that the executable is available and that your machine can safely operate the
-              current project:
-            </p>
-            <pre class="code-block"><code>muxtra --version
+            <pre class="code-block"><code>cd your-project
+muxtra setup
 muxtra doctor</code></pre>
           </section>
 
@@ -163,6 +158,11 @@ muxtra doctor</code></pre>
             <pre class="code-block"><code>cd your-project
 muxtra setup
 muxtra start "Build the dashboard navigation" --agent codex</code></pre>
+            <p>
+              Setup creates and commits <code>.muxtra/project.yaml</code> so every isolated agent
+              sees the same workflow. Muxtra detects common package checks automatically and stops
+              with clear instructions if your project still needs checks configured.
+            </p>
             <p>In another terminal, send a separate task to a different provider:</p>
             <pre class="code-block"><code>muxtra start "Add dashboard search" --agent claude
 muxtra status</code></pre>

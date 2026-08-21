@@ -23,6 +23,29 @@ export async function gitBranch(cwd: string): Promise<string> {
   return stdout || "(detached)";
 }
 
+export async function defaultBranch(cwd: string): Promise<string> {
+  try {
+    const { stdout } = await run(
+      "git",
+      ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"],
+      cwd,
+    );
+    if (stdout.startsWith("origin/")) return stdout.slice("origin/".length);
+  } catch {
+    // Repositories without a remote HEAD still commonly have a local main or master branch.
+  }
+
+  for (const candidate of ["main", "master"]) {
+    if (await hasRef(cwd, `refs/heads/${candidate}`)) return candidate;
+  }
+
+  const current = await gitBranch(cwd);
+  if (current !== "(detached)") return current;
+  throw new CliError(
+    "Muxtra could not determine the primary branch. Check out the branch you want to combine into and run setup again.",
+  );
+}
+
 export async function gitStatus(cwd: string): Promise<string> {
   const { stdout } = await run("git", ["status", "--porcelain"], cwd);
   return stdout;

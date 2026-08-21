@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { Command, Help } from "commander";
 import { heartbeatIdentity } from "./claims.js";
 import { agentsCommand } from "./commands/agents.js";
 import { agentStatusCommand } from "./commands/agent-status.js";
@@ -409,6 +409,21 @@ program.hook("preAction", async (_command, actionCommand) => {
       await touchWorkspaceAgent(root, identity.workspace, identity.agent);
     }
   }
+});
+
+const primaryHelpOrder = ["setup", "agents", "start", "status", "finish", "combine"];
+const defaultHelp = new Help();
+program.configureHelp({
+  visibleCommands(command) {
+    return [...defaultHelp.visibleCommands(command)].sort((left, right) => {
+      const leftIndex = primaryHelpOrder.indexOf(left.name());
+      const rightIndex = primaryHelpOrder.indexOf(right.name());
+      if (leftIndex === -1 && rightIndex === -1) return 0;
+      if (leftIndex === -1) return 1;
+      if (rightIndex === -1) return -1;
+      return leftIndex - rightIndex;
+    });
+  },
 });
 
 program.parseAsync().catch((error: unknown) => {

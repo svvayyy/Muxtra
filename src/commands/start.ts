@@ -33,6 +33,12 @@ export async function startCommand(
   options: StartOptions,
 ): Promise<WorkspaceRecord> {
   const { root, config } = await loadConfig(cwd);
+  if (config.checks.length === 0) {
+    throw new CliError(
+      "No project checks are configured. Add at least one test, build, lint, or typecheck command " +
+        'under "checks:" in .muxtra/project.yaml and commit it before starting a task.',
+    );
+  }
   const lane = options.lane ? normalizeTaskLane(options.lane) : undefined;
   const state = await readState(root);
   const selection = lane

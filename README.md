@@ -10,7 +10,7 @@
 
 Muxtra lets coding agents from different providers work on the same project at the same
 time. It keeps every agent isolated while it works, tracks overlapping changes, and is
-being built to reconcile their completed work into one verified result.
+able to combine their completed work into one verified result.
 
 The repository owns the workflow. A committed project contract defines setup commands, checks, Git policy, runtime configuration, and production safeguards. Each task receives its own branch and worktree so concurrent agents do not overwrite one another's source code.
 
@@ -37,19 +37,16 @@ The repository owns the workflow. A committed project contract defines setup com
 - Portable instructions for app-based, remote, and unsupported agent clients
 - Versioned machine-readable reports and a reusable programmatic core
 
-## Install from source
+## Install
 
-Muxtra requires Node.js 20 or newer, Git, and pnpm.
+Muxtra requires Node.js 20 or newer and Git:
 
 ```bash
-git clone https://github.com/svvayyy/Muxtra.git
-cd Muxtra
-pnpm install
-pnpm build
-npm link
+npm install --global muxtra
+muxtra --version
 ```
 
-The global executable is `muxtra`.
+To build Muxtra itself from source, see [Development](#development).
 
 ## Quick start for people
 
@@ -60,6 +57,11 @@ with at least one commit, set up Muxtra once and describe a task:
 muxtra setup
 muxtra start "Build the dashboard navigation" --agent codex
 ```
+
+`muxtra setup` creates `.muxtra/project.yaml` and commits that one file so every isolated
+agent receives the same workflow. For JavaScript and TypeScript projects, it detects common
+`lint`, `typecheck`, `test`, and `build` scripts. If it cannot detect a check, it tells you
+exactly what to add before allowing the first task to start.
 
 Open another terminal and start a different provider on another task:
 
@@ -246,10 +248,10 @@ The CLI copies only `.vercel/project.json` into the worktree, verifies the proje
 
 ```text
 muxtra setup
-muxtra start <task> [--agent <agent>] [--lane <design|code>] [--model <model>] [--name <name>] [--no-launch]
+muxtra start <task> [--agent <agent>] [--lane <design|code>] [--model <model>] [--name <name>] [--base <git-ref>] [--fetch] [--image <path>] [--no-launch]
 muxtra lanes
 muxtra lanes set <design|code> --agent <claude|codex> [--model <model> | --clear-model]
-muxtra team <task> [--design-agent <agent>] [--design-model <model>] [--code-agent <agent>] [--code-model <model>]
+muxtra team <task> [--design-agent <agent>] [--design-model <model>] [--code-agent <agent>] [--code-model <model>] [--base <git-ref>] [--fetch] [--image <path>]
 muxtra init [--install-guide]
 muxtra context [--json]
 muxtra claim <paths...> [--write | --read] [--task <text>] [--agent <name>] [--ttl <minutes>] [--allow-space-paths] [--fail-on-conflict] [--json]
@@ -260,7 +262,7 @@ muxtra agent-guide
 muxtra install-guide [--file <name>]
 muxtra doctor
 muxtra bootstrap [--apply]
-muxtra enter <name> --agent <agent> [--lane <design|code>] [--model <model>] [--base <git-ref>]
+muxtra enter <name> --agent <agent> [--lane <design|code>] [--model <model>] [--base <git-ref>] [--fetch] [--allow-stale-base]
 muxtra adopt <path> --agent <agent> [--name <name>] [--base <git-ref>]
 muxtra agents [--json]
 muxtra launch [name] [--agent <agent>] [--model <model>] [--prompt <task>] [--dry-run]
@@ -270,7 +272,7 @@ muxtra remove <name>
 muxtra dev [name] [--port <port>] [--no-wait]
 muxtra logs <name> [--lines <count>]
 muxtra stop <name> [--force]
-muxtra status [--json] [--fetch]
+muxtra status [--json] [--fetch] [--details]
 muxtra finish [name] [--agent <agent>] [--fetch] [--json]
 muxtra combine [names...] [--json]
 muxtra combine --abort
@@ -367,10 +369,13 @@ Project policy is descriptive in this preview. Future GitHub and deployment adap
 ## Development
 
 ```bash
+git clone https://github.com/svvayyy/Muxtra.git
+cd Muxtra
 pnpm install
 pnpm typecheck
 pnpm test
 pnpm build
+npm link
 ```
 
 Integration tests create temporary Git repositories and real local development processes. Temporary resources are removed after each test.

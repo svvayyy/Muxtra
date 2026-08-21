@@ -1,7 +1,7 @@
 import path from "node:path";
-import { configExists } from "../config.js";
+import { configExists, loadConfig } from "../config.js";
 import { CliError } from "../errors.js";
-import { gitRoot, resolveRef } from "../git.js";
+import { defaultBranch, gitBranch, gitRoot, resolveRef } from "../git.js";
 import { run } from "../process.js";
 import { initCommand } from "./init.js";
 
@@ -13,6 +13,11 @@ export async function setupCommand(cwd: string): Promise<void> {
   const root = await gitRoot(cwd);
   if (await configExists(root)) {
     console.log("Muxtra is already set up for this project.");
+    const { config } = await loadConfig(root);
+    if (config.checks.length === 0) {
+      printMissingChecks();
+      return;
+    }
     console.log('Start work with: muxtra start "Describe the task" --agent codex');
     return;
   }
@@ -22,6 +27,15 @@ export async function setupCommand(cwd: string): Promise<void> {
   } catch {
     throw new CliError(
       "This project needs an initial Git commit before Muxtra can create isolated agent workspaces.",
+    );
+  }
+
+  const primaryBranch = await defaultBranch(root);
+  const currentBranch = await gitBranch(root);
+  if (currentBranch !== primaryBranch) {
+    throw new CliError(
+      `Run Muxtra setup from the primary branch (${primaryBranch}). ` +
+        `The current branch is ${currentBranch}. Switch with "git switch ${primaryBranch}", then run "muxtra setup" again.`,
     );
   }
 
@@ -38,6 +52,21 @@ export async function setupCommand(cwd: string): Promise<void> {
     );
   }
 
+  const { config } = await loadConfig(root);
+  console.log('Committed .muxtra/project.yaml as "Configure Muxtra".');
+  if (config.checks.length === 0) {
+    printMissingChecks();
+    return;
+  }
+
   console.log("\n✓ Muxtra is ready.");
   console.log('Start your first task with: muxtra start "Describe what you want" --agent codex');
+}
+
+function printMissingChecks(): void {
+  console.warn("\n⚠ Muxtra needs at least one project check before work can start.");
+  console.warn(
+    "Add your test, build, lint, or typecheck commands under checks: in .muxtra/project.yaml.",
+  );
+  console.warn("Commit that change, then run muxtra setup again to confirm the project is ready.");
 }
