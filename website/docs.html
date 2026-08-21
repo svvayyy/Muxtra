@@ -53,7 +53,7 @@
       <header class="page-hero docs-hero">
         <div class="shell">
           <div class="page-label"><span aria-hidden="true"></span>Documentation</div>
-          <h1>Parallel agents,<br />without the Git homework.</h1>
+          <h1>From parallel tasks<br />to one verified result.</h1>
           <p>
             Start with a task in plain language. Muxtra handles isolated workspaces, project
             context, verification, and safe composition.
@@ -94,10 +94,7 @@
               <article>
                 <span>01</span>
                 <h3>Describe</h3>
-                <p>
-                  Give each agent a focused task. You never need to name a branch or choose a
-                  worktree path.
-                </p>
+                <p>Give each agent a focused task. Muxtra creates and tracks its workspace.</p>
               </article>
               <article>
                 <span>02</span>
@@ -176,9 +173,9 @@ muxtra start "Build the dashboard navigation" --agent codex</code></pre>
             <pre class="code-block"><code>muxtra start "Add dashboard search" --agent claude
 muxtra status</code></pre>
             <div class="docs-note">
-              <strong>You stay in your normal project.</strong> Muxtra generates the internal names,
-              branches, and workspace locations. Use <code>muxtra status --details</code> only when
-              you want the Git diagnostics.
+              <strong>Task mapping is recorded automatically.</strong> Muxtra generates the internal
+              names, branches, and workspace locations. <code>muxtra status --details</code> exposes
+              the underlying Git diagnostics.
             </div>
           </section>
 

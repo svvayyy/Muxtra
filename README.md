@@ -4,12 +4,12 @@
 
 <p align="center">
   <a href="https://muxtra.dev">Website</a> ·
-  <a href="#quick-start-for-people">Quick start</a> ·
+  <a href="#quick-start">Quick start</a> ·
   <a href="#design-and-code-lanes">Design and code lanes</a>
 </p>
 
 Muxtra lets coding agents from different providers work on the same project at the same
-time. It keeps every agent isolated while it works, tracks overlapping changes, and is
+time. It keeps every agent isolated while it works, tracks overlapping claims, and is
 able to combine their completed work into one verified result.
 
 The repository owns the workflow. A committed project contract defines setup commands, checks, Git policy, runtime configuration, and production safeguards. Each task receives its own branch and worktree so concurrent agents do not overwrite one another's source code.
@@ -53,10 +53,10 @@ to evolve as the workflow is tested in real projects.
 
 To build Muxtra itself from source, see [Development](#development).
 
-## Quick start for people
+## Quick start
 
-You do not need to understand branches or Git worktrees. From an existing Git project
-with at least one commit, set up Muxtra once and describe a task:
+From an existing Git project with at least one commit, set up Muxtra once and describe a
+task:
 
 ```bash
 muxtra setup

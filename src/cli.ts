@@ -73,7 +73,7 @@ program
 program
   .command("start")
   .argument("<task>", "describe what you want the agent to do")
-  .description("Start one agent task without managing branches or worktrees yourself")
+  .description("Create an isolated workspace and launch one agent task")
   .option("--agent <agent>", "agent provider, for example codex or claude")
   .option("--lane <lane>", "task lane: design or code")
   .option("--model <model>", "exact provider model for this task")
