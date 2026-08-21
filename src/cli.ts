@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { Command, Help } from "commander";
 import { heartbeatIdentity } from "./claims.js";
 import { agentsCommand } from "./commands/agents.js";
@@ -31,11 +32,14 @@ import { resolveIdentity } from "./identity.js";
 import { touchWorkspaceAgent } from "./state.js";
 import { normalizeTaskLane } from "./lanes.js";
 
+const require = createRequire(import.meta.url);
+const packageJson = require("../package.json") as { version: string };
+
 const program = new Command();
 program
   .name("muxtra")
   .description("Run coding agents from different providers safely in the same project")
-  .version("0.1.0");
+  .version(packageJson.version);
 
 program
   .command("agents")

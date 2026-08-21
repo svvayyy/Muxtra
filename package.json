@@ -1,6 +1,6 @@
 {
   "name": "muxtra",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.0",
   "description": "Run coding agents from different providers in parallel without losing their work.",
   "license": "MIT",
   "author": "Muxtra contributors",
@@ -55,7 +55,8 @@
   },
   "publishConfig": {
     "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "tag": "beta"
   },
   "engines": {
     "node": ">=20"
