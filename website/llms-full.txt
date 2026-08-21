@@ -1,0 +1,108 @@
+# Muxtra
+
+> Many agents. One codebase.
+
+Muxtra is an open-source command-line tool that lets coding agents from different providers work on the same Git project at the same time. It keeps every task isolated while work is in progress, makes overlapping ownership visible, verifies finished task branches, and combines verified work only after the resulting code passes the repository's configured checks.
+
+Website: https://muxtra.dev/
+Documentation: https://muxtra.dev/docs.html
+Source: https://github.com/svvayyy/Muxtra
+Package: https://www.npmjs.com/package/muxtra
+License: MIT
+Status: Public beta
+
+## The problem Muxtra solves
+
+Running several coding agents at once creates more throughput, but it also creates coordination risks. Agents can overwrite one another in a shared checkout, make incompatible changes in separate workspaces, or report completion before their work is safe to integrate.
+
+Muxtra treats isolation, ownership, verification, and composition as one repository-defined workflow. Each task receives a dedicated Git branch and worktree. Agents can declare the files or patterns they intend to change. Completed work must be committed, current, clean, and tested before it becomes an integration candidate. Muxtra then composes selected candidates in a disposable worktree and advances the primary project only when the combined result passes.
+
+## Intended users
+
+Muxtra is for developers and teams that want to run Claude Code, OpenAI Codex CLI, or other coding-agent clients in parallel without replacing those providers' native interfaces. It is especially useful when one feature can be divided into focused responsibilities, such as a design lane for UI and frontend work and a code lane for backend logic, data, integrations, architecture, and tests.
+
+## Core workflow
+
+1. Run `muxtra setup` once in an existing Git project with at least one commit. This creates and commits `.muxtra/project.yaml`, the repository-owned workflow contract.
+2. Start a task with a command such as `muxtra start "Build the dashboard navigation" --agent codex`.
+3. Start other tasks or providers in parallel. Every task works in a separate branch and Git worktree.
+4. Inspect all tasks with `muxtra status`.
+5. Agents commit their work and run `muxtra finish`. Muxtra verifies that the workspace is clean, current, ahead of its recorded base, not serving a development process, and passing the configured checks.
+6. Run `muxtra combine` to build a temporary combined result. The primary project advances only if every merge and configured check succeeds.
+
+For a responsibility-aware pair of tasks, configure local design and code lane defaults with `muxtra lanes set`, then run `muxtra team "Build account settings"`.
+
+## Main capabilities
+
+- One branch and Git worktree for every managed agent task.
+- Existing-worktree adoption without resetting, moving, or rewriting it.
+- Recorded base commits and stale-work detection.
+- Repository-owned install commands, checks, Git policy, runtime configuration, and production safeguards.
+- Managed development processes with isolated ports, logs, health checks, and clean shutdown.
+- Optional Vercel Development environment injection without persisting secret values.
+- A shared, machine-local claim registry for intended read and write paths.
+- Claim-aware build diagnostics that relate failing file paths to active ownership claims.
+- A finish gate for committed, current, tested integration candidates.
+- Guarded local composition that tests the combined result before advancing the primary branch.
+- Per-machine design and code lane defaults with separate providers and exact models.
+- Managed launch adapters for Claude Code and OpenAI Codex CLI.
+- Portable instructions for agent clients Muxtra cannot launch directly.
+- Versioned JSON command output and an exported programmatic core.
+
+## Project contract
+
+The committed `.muxtra/project.yaml` file defines the default branch, installation and development commands, health check, environment provider, repository checks, lane defaults, Git policy, and production safeguards. It contains commands and policy, not credentials.
+
+Machine-local state is stored in the repository's shared Git directory so all worktrees in one clone can see it. Managed worktrees and logs live under `~/.muxtra/` by default. Set `MUXTRA_HOME` to choose another local location.
+
+## Claims and coordination
+
+Claims are leases that advertise the paths an agent intends to read or write; they are not locks. They expire after inactivity so a crashed agent cannot permanently block the repository. A conflicting claim can be reported or rejected when it is visible, but claims do not become an atomic cross-process locking system.
+
+When a configured check fails, Muxtra can extract file paths from the output and compare them with active write claims. The resulting verdict is an ownership signal, not proof that a particular agent caused the failure.
+
+## Safety model
+
+- Managed workspaces are created outside the source repository by default.
+- Existing worktrees are adopted without file changes or Git resets.
+- Workspace removal refuses to discard uncommitted changes and retains task branches.
+- Each workspace records its exact base commit.
+- `muxtra finish` refuses dirty, stale, uncommitted, unchecked, or actively served workspaces.
+- `muxtra combine` refuses unverified or changed tasks and does not apply a failed composition.
+- Vercel authentication and environment retrieval remain delegated to the Vercel CLI.
+- Muxtra does not collect telemetry.
+
+## Current beta boundaries
+
+Muxtra currently combines verified local task branches. It does not yet push branches, open pull requests, deploy previews, or promote production releases. Task branches are not deleted automatically.
+
+## Technical stack and requirements
+
+Muxtra requires Node.js 20 or newer and Git. The CLI is written in strict TypeScript as an ECMAScript module and compiles to JavaScript with declaration files. Its direct runtime dependencies are Commander for the CLI, YAML for project contracts, and Zod for validation. The project uses pnpm, Vitest, and Prettier. The website is a static HTML, CSS, and JavaScript site deployed with GitHub Pages.
+
+Install the beta from npm:
+
+```sh
+npm install --global muxtra@beta
+muxtra --version
+```
+
+Build from source:
+
+```sh
+git clone https://github.com/svvayyy/Muxtra.git
+cd Muxtra
+pnpm install
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+## Authoritative resources
+
+- Product documentation: https://muxtra.dev/docs.html
+- Repository README: https://github.com/svvayyy/Muxtra#readme
+- Release notes: https://muxtra.dev/changelog.html
+- Privacy: https://muxtra.dev/privacy.html
+- Security policy: https://github.com/svvayyy/Muxtra/blob/main/SECURITY.md
+- License: https://github.com/svvayyy/Muxtra/blob/main/LICENSE
