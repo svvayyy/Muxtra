@@ -475,12 +475,6 @@ img {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.hero-note {
-  margin: 18px 0 0;
-  color: var(--muted-2);
-  font-size: 13px;
-}
-
 .hero-stage {
   position: relative;
   margin-top: 102px;
@@ -3503,6 +3497,14 @@ muxtra-app-demo.is-changing {
 
   .terminal-card pre {
     font-size: 10px;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .attention-screen,
+  .attention-screen .terminal-card {
+    min-height: 430px;
+    aspect-ratio: auto;
   }
 
   .footer-bottom {
