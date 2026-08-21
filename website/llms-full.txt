@@ -5,7 +5,7 @@
 Muxtra is an open-source command-line tool that lets coding agents from different providers work on the same Git project at the same time. It keeps every task isolated while work is in progress, makes overlapping ownership visible, verifies finished task branches, and combines verified work only after the resulting code passes the repository's configured checks.
 
 Website: https://muxtra.dev/
-Documentation: https://muxtra.dev/docs.html
+Documentation: https://muxtra.dev/docs/
 Source: https://github.com/svvayyy/Muxtra
 Package: https://www.npmjs.com/package/muxtra
 License: MIT
@@ -102,9 +102,9 @@ pnpm build
 
 ## Authoritative resources
 
-- Product documentation: https://muxtra.dev/docs.html
+- Product documentation: https://muxtra.dev/docs/
 - Repository README: https://github.com/svvayyy/Muxtra#readme
-- Release notes: https://muxtra.dev/changelog.html
-- Privacy: https://muxtra.dev/privacy.html
+- Release notes: https://muxtra.dev/changelog/
+- Privacy: https://muxtra.dev/privacy/
 - Security policy: https://github.com/svvayyy/Muxtra/blob/main/SECURITY.md
 - License: https://github.com/svvayyy/Muxtra/blob/main/LICENSE

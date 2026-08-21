@@ -6,14 +6,14 @@ Muxtra is a local-first developer tool distributed as the `muxtra` npm package. 
 
 ## Start here
 
-- [Documentation](https://muxtra.dev/docs.html): Installation, first run, design and code lanes, verification, composition, providers, project configuration, development servers, and command reference.
+- [Documentation](https://muxtra.dev/docs/): Installation, first run, design and code lanes, verification, composition, providers, project configuration, development servers, and command reference.
 - [Full LLM brief](https://muxtra.dev/llms-full.txt): A self-contained, plain-text overview of Muxtra's purpose, workflow, capabilities, safety model, and technical requirements.
-- [About](https://muxtra.dev/about.html): Why Muxtra exists and the principles behind its approach to parallel agent coordination.
+- [About](https://muxtra.dev/about/): Why Muxtra exists and the principles behind its approach to parallel agent coordination.
 - [GitHub repository](https://github.com/svvayyy/Muxtra): Source code, README, license, security policy, and development instructions.
 
 ## Additional resources
 
-- [Changelog](https://muxtra.dev/changelog.html): Product milestones and release notes.
-- [Privacy](https://muxtra.dev/privacy.html): Local-first operation, no Muxtra CLI telemetry, and website privacy details.
+- [Changelog](https://muxtra.dev/changelog/): Product milestones and release notes.
+- [Privacy](https://muxtra.dev/privacy/): Local-first operation, no Muxtra CLI telemetry, and website privacy details.
 - [npm package](https://www.npmjs.com/package/muxtra): Published beta package and installation metadata.
 - [MIT license](https://github.com/svvayyy/Muxtra/blob/main/LICENSE): Open-source license terms.

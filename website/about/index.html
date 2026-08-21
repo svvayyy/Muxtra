@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a090d" />
+    <meta
+      name="description"
+      content="Why Muxtra exists and how it makes parallel coding agents understandable, safe, and useful."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Muxtra" />
+    <meta property="og:title" content="About — Muxtra" />
+    <meta
+      property="og:description"
+      content="Why Muxtra exists and how it makes parallel coding agents understandable, safe, and useful."
+    />
+    <meta property="og:url" content="https://muxtra.dev/about/" />
+    <meta property="og:image" content="https://muxtra.dev/assets/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Muxtra — Many agents. One codebase." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="About — Muxtra" />
+    <meta
+      name="twitter:description"
+      content="Why Muxtra exists and how it makes parallel coding agents safer and easier to coordinate."
+    />
+    <meta name="twitter:image" content="https://muxtra.dev/assets/og.png" />
+    <meta name="twitter:image:alt" content="Muxtra — Many agents. One codebase." />
+    <link rel="canonical" href="https://muxtra.dev/about/" />
+    <link rel="icon" href="/assets/muxtra-icon.png" />
+    <link rel="apple-touch-icon" href="/assets/muxtra-icon.png" />
+    <link rel="stylesheet" href="/styles.css?v=20260816-3" />
+    <title>About — Muxtra</title>
+  </head>
+  <body class="content-page about-page">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header" data-header>
+      <div class="shell nav-shell">
+        <a class="brand" href="/" aria-label="Muxtra home"
+          ><span class="brand-mark" aria-hidden="true"
+            ><img src="/assets/muxtra-mark.svg" alt="" /></span
+          ><span>Muxtra</span></a
+        ><button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="site-nav"
+          data-nav-toggle
+        >
+          <span class="sr-only">Toggle navigation</span><span></span><span></span>
+        </button>
+        <nav id="site-nav" class="site-nav" aria-label="Primary" data-nav>
+          <a href="/#product">Product</a><a href="/docs/">Docs</a><a href="/changelog/">Changelog</a
+          ><a href="/about/" aria-current="page">About</a
+          ><a
+            class="nav-github"
+            href="https://github.com/svvayyy/Muxtra"
+            target="_blank"
+            rel="noreferrer"
+            >GitHub <span aria-hidden="true">↗</span></a
+          >
+        </nav>
+      </div>
+    </header>
+    <main id="main" class="content-main">
+      <header class="page-hero about-hero">
+        <div class="shell">
+          <div class="page-label"><span aria-hidden="true"></span>About Muxtra</div>
+          <h1>More agents should mean<br />more finished work.</h1>
+          <p>
+            Keep the agent interfaces you already like. Lose the workspace juggling, crossed
+            changes, and uncertainty about what is safe to combine.
+          </p>
+        </div>
+      </header>
+      <section class="about-statement">
+        <div class="shell about-split">
+          <div class="section-kicker">The idea</div>
+          <div>
+            <h2>Parallelism needs coordination.</h2>
+            <p>
+              Coding agents are individually capable, but real projects rarely divide themselves
+              into perfectly separate files. Two agents can make correct changes in isolation and
+              still produce a broken result together.
+            </p>
+            <p>
+              Muxtra exists to make that coordination understandable. It gives every task room to
+              work, surfaces declared path overlap, verifies the committed result, and proves the
+              final composition before it reaches your project.
+            </p>
+          </div>
+        </div>
+      </section>
+      <section class="section-pad about-principles">
+        <div class="shell">
+          <div class="section-heading">
+            <div>
+              <div class="section-kicker">What we believe</div>
+              <h2>Coordination with clear boundaries.</h2>
+            </div>
+            <p>Every task should have a clear owner, boundary, and path to verification.</p>
+          </div>
+          <div class="belief-grid">
+            <article>
+              <span>01</span>
+              <h3>Isolation should be automatic</h3>
+              <p>
+                Each task receives a dedicated branch and worktree, recorded from an exact base
+                commit and kept separate until verification.
+              </p>
+            </article>
+            <article>
+              <span>02</span>
+              <h3>Providers should coexist</h3>
+              <p>
+                Use Codex for one task, Claude Code for another, or hand a workspace to a remote
+                client. The project—not the provider—owns the workflow.
+              </p>
+            </article>
+            <article>
+              <span>03</span>
+              <h3>Verification beats optimism</h3>
+              <p>
+                “The agent finished” is not the same as “the work is ready.” Muxtra records exact
+                commits and reruns checks on the combined result.
+              </p>
+            </article>
+            <article>
+              <span>04</span>
+              <h3>Failure should be recoverable</h3>
+              <p>
+                Failed composition happens in temporary space. Task branches remain available.
+                Uncommitted work is never silently discarded.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section class="about-open">
+        <div class="shell about-split">
+          <div class="section-kicker">Open source</div>
+          <div>
+            <h2>Built in the open.</h2>
+            <p>
+              Muxtra is an MIT-licensed CLI for coordinating coding agents across providers. The
+              current release keeps each provider’s native interface intact while Muxtra owns
+              isolation, role context, verification, and safe composition.
+            </p>
+            <div class="inline-links">
+              <a class="text-link" href="https://github.com/svvayyy/Muxtra"
+                >Explore the repository <span aria-hidden="true">↗</span></a
+              ><a class="text-link" href="/docs/"
+                >Read the docs <span aria-hidden="true">→</span></a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer content-footer">
+      <div class="shell footer-grid">
+        <div>
+          <a class="brand footer-brand" href="/"
+            ><span class="brand-mark" aria-hidden="true"
+              ><img src="/assets/muxtra-mark.svg" alt="" /></span
+            ><span>Muxtra</span></a
+          >
+          <p>Parallel coding agents without crossed wires.</p>
+        </div>
+        <div class="footer-links">
+          <a href="/#product">Product</a><a href="/docs/">Docs</a><a href="/changelog/">Changelog</a
+          ><a href="/about/">About</a><a href="/privacy/">Privacy</a
+          ><a href="https://github.com/svvayyy/Muxtra">GitHub</a>
+        </div>
+      </div>
+      <div class="shell footer-bottom">
+        <span>© <span data-year></span> Muxtra</span><span>Built in parallel.</span>
+      </div>
+    </footer>
+    <script src="/script.js?v=20260816-3"></script>
+  </body>
+</html>
