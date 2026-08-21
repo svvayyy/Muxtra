@@ -61,19 +61,25 @@ showcaseTabs.forEach((tab) => {
   });
 });
 
-document.querySelector("[data-copy-command]")?.addEventListener("click", async (event) => {
-  const button = event.currentTarget;
-  const command = 'muxtra start "Fix the checkout" --agent codex';
+document.querySelectorAll("[data-copy-command]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const command = button.dataset.command;
+    const label = button.querySelector("[data-copy-label]") || button;
+    const originalLabel = label.textContent;
 
-  try {
-    await navigator.clipboard.writeText(command);
-    button.textContent = "Copied";
+    if (!command) return;
+
+    try {
+      await navigator.clipboard.writeText(command);
+      label.textContent = "Copied";
+    } catch {
+      label.textContent = "Copy failed";
+    }
+
     window.setTimeout(() => {
-      button.textContent = "Copy";
+      label.textContent = originalLabel;
     }, 1600);
-  } catch {
-    button.textContent = command;
-  }
+  });
 });
 
 document.querySelectorAll("[data-year]").forEach((element) => {

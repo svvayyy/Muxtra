@@ -356,6 +356,78 @@ img {
   margin-top: 34px;
 }
 
+.hero-install-actions {
+  align-items: stretch;
+}
+
+.hero-install-command {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(188, 177, 255, 0.28);
+  border-radius: 13px;
+  background: rgba(13, 12, 19, 0.76);
+  color: var(--text);
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.26),
+    inset 0 1px rgba(255, 255, 255, 0.05);
+  padding: 0;
+  backdrop-filter: blur(18px);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.hero-install-command:hover {
+  transform: translateY(-2px);
+  border-color: rgba(188, 177, 255, 0.5);
+  background: rgba(19, 17, 29, 0.86);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.34),
+    0 0 34px rgba(115, 90, 232, 0.11),
+    inset 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.hero-install-command:focus-visible {
+  outline: 2px solid var(--violet-bright);
+  outline-offset: 3px;
+}
+
+.hero-install-command code {
+  color: #f0edf9;
+  font-family: "Geist Mono", monospace;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.install-prompt {
+  margin: 0 10px 0 15px;
+  color: var(--violet-bright);
+  font-family: "Geist Mono", monospace;
+  font-size: 13px;
+}
+
+.install-copy {
+  display: grid;
+  min-width: 58px;
+  align-self: stretch;
+  place-items: center;
+  margin-left: 15px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--violet-soft);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.hero-docs-link {
+  min-height: 52px;
+}
+
 .button {
   display: inline-flex;
   min-height: 48px;
@@ -3235,6 +3307,19 @@ muxtra-app-demo.is-changing {
 
   .hero-actions .button {
     width: min(100%, 300px);
+  }
+
+  .hero-install-command {
+    width: min(100%, 360px);
+  }
+
+  .hero-install-command code {
+    font-size: 12px;
+  }
+
+  .install-copy {
+    min-width: 52px;
+    margin-left: auto;
   }
 
   .hero-stage {
