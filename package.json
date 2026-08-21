@@ -1,6 +1,6 @@
 {
   "name": "muxtra",
-  "version": "0.1.0-beta.0",
+  "version": "0.1.0-beta.1",
   "description": "Run coding agents from different providers in parallel without losing their work.",
   "license": "MIT",
   "author": "Muxtra contributors",

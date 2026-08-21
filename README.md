@@ -51,12 +51,18 @@ release, npm also resolves the untagged package name to this build until a stabl
 exists. Use `muxtra@beta` to stay on the intended prerelease channel, and expect the CLI
 to evolve as the workflow is tested in real projects.
 
+Update an npm installation to the newest beta release with:
+
+```bash
+muxtra update
+```
+
 To build Muxtra itself from source, see [Development](#development).
 
 ## Quick start
 
-From an existing Git project with at least one commit, set up Muxtra once and describe a
-task:
+From an existing Git project with at least one commit, set up Muxtra once and give your
+first task a short title:
 
 ```bash
 muxtra setup
@@ -67,6 +73,15 @@ muxtra start "Build the dashboard navigation" --agent codex
 agent receives the same workflow. For JavaScript and TypeScript projects, it detects common
 `lint`, `typecheck`, `test`, and `build` scripts. If it cannot detect a check, it tells you
 exactly what to add before allowing the first task to start.
+
+The quoted text is a tracking title used for the workspace, branch, and status display. It
+is not sent to the agent as a user prompt. Once the native agent opens, give it your full
+request with all the context you want. If you intentionally want to send an immediate first
+prompt, make that explicit:
+
+```bash
+muxtra start "Dashboard navigation" --agent codex --prompt "Implement responsive dashboard navigation using the existing design system."
+```
 
 Open another terminal and start a different provider on another task:
 
@@ -92,9 +107,9 @@ checks there, and only advances the primary project when every merge and check s
 Same-file conflicts, setup failures, and combined-only check failures leave the primary
 project untouched. Task branches are never deleted automatically.
 
-Muxtra generates the internal workspace names and branches. `muxtra status` shows tasks
-in plain language; `muxtra status --details` exposes Git diagnostics when you need them.
-Agents receive the repository workflow and task automatically.
+Muxtra generates the internal workspace names and branches. `muxtra status` shows task
+titles in plain language; `muxtra status --details` exposes Git diagnostics when you need
+them. Agents receive the repository workflow automatically and wait for your actual request.
 
 ## Design and code lanes
 
@@ -122,6 +137,8 @@ Muxtra prints one `muxtra launch` command for each workspace. Open those command
 separate terminals so Claude Code and Codex retain their complete native interfaces,
 including reasoning, tool calls, approvals, and conversation. When both tasks are
 verified, run the exact `muxtra combine <design-task> <code-task>` command Muxtra prints.
+The team title labels both workspaces; each agent waits for its own detailed request after
+launching.
 
 Lane preferences live in Muxtra's local Git state and do not dirty the repository. A
 team can also commit shared defaults under `lanes` in `.muxtra/project.yaml`.
@@ -253,10 +270,11 @@ The CLI copies only `.vercel/project.json` into the worktree, verifies the proje
 
 ```text
 muxtra setup
-muxtra start <task> [--agent <agent>] [--lane <design|code>] [--model <model>] [--name <name>] [--base <git-ref>] [--fetch] [--image <path>] [--no-launch]
+muxtra start <title> [--agent <agent>] [--lane <design|code>] [--model <model>] [--name <name>] [--prompt <prompt>] [--base <git-ref>] [--fetch] [--image <path>] [--no-launch]
 muxtra lanes
 muxtra lanes set <design|code> --agent <claude|codex> [--model <model> | --clear-model]
-muxtra team <task> [--design-agent <agent>] [--design-model <model>] [--code-agent <agent>] [--code-model <model>] [--base <git-ref>] [--fetch] [--image <path>]
+muxtra team <title> [--design-agent <agent>] [--design-model <model>] [--code-agent <agent>] [--code-model <model>] [--base <git-ref>] [--fetch] [--image <path>]
+muxtra update
 muxtra init [--install-guide]
 muxtra context [--json]
 muxtra claim <paths...> [--write | --read] [--task <text>] [--agent <name>] [--ttl <minutes>] [--allow-space-paths] [--fail-on-conflict] [--json]

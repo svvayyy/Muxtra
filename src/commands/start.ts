@@ -16,6 +16,7 @@ export interface StartOptions {
   lane?: string;
   model?: string;
   name?: string;
+  prompt?: string;
   base?: string;
   fetch?: boolean;
   launch: boolean;
@@ -26,12 +27,18 @@ export interface StartOptions {
   skipCleanCheck?: boolean;
 }
 
-/** Create the isolated workspace and immediately hand the user's task to an agent. */
+/** Create an isolated workspace and optionally open its agent session. */
 export async function startCommand(
   cwd: string,
-  prompt: string,
+  title: string,
   options: StartOptions,
 ): Promise<WorkspaceRecord> {
+  const initialPrompt = options.prompt?.trim();
+  if (!options.launch && initialPrompt) {
+    throw new CliError(
+      'Use --prompt when you later run "muxtra launch"; it cannot be combined with --no-launch.',
+    );
+  }
   const { root, config } = await loadConfig(cwd);
   if (config.checks.length === 0) {
     throw new CliError(
@@ -74,10 +81,10 @@ export async function startCommand(
   }
   const name = options.name
     ? slugify(options.name)
-    : await availableTaskName(root, prompt, agent, config.git.branch_prefix, lane);
+    : await availableTaskName(root, title, agent, config.git.branch_prefix, lane);
   const workspace = await enterCommand(root, name, {
     agent,
-    task: prompt,
+    task: title,
     displayName: options.name,
     base: options.base,
     fetch: options.fetch,
@@ -102,18 +109,18 @@ export async function startCommand(
   }
 
   console.log("");
-  await launchCommand(root, workspace.name, { prompt, model });
+  await launchCommand(root, workspace.name, { prompt: initialPrompt, model });
   return workspace;
 }
 
 async function availableTaskName(
   root: string,
-  prompt: string,
+  title: string,
   agent: string,
   branchPrefix: string,
   lane?: TaskLane,
 ): Promise<string> {
-  const promptBase = slugify(prompt)
+  const promptBase = slugify(title)
     .split("-")
     .slice(0, lane ? 5 : 6)
     .join("-");
@@ -128,5 +135,5 @@ async function availableTaskName(
     if (!registered && !(await hasRef(root, `refs/heads/${branch}`))) return candidate;
   }
 
-  throw new Error(`Could not generate a unique workspace name for: ${prompt}`);
+  throw new Error(`Could not generate a unique workspace name for: ${title}`);
 }

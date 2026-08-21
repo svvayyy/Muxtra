@@ -41,7 +41,7 @@ export async function launchCommand(
     resolved.config,
     resolved.workspace,
     agent,
-    options.prompt ?? resolved.workspace.task,
+    options.prompt,
     model,
   );
   const sessionId = randomUUID();
@@ -249,9 +249,9 @@ Operating rules:
 11. When your changes are committed, run "muxtra finish ${workspace.name}". It reruns the project checks, verifies freshness and cleanliness, and releases your claim only when the branch is ready for integration.
 ${laneContext}
 
-${task ? `User task:\n${task}` : "Load the project context, then ask the user what they want to work on."}${
+${task ? `User task:\n${task}` : "Load the project context, then ask the user what they want to work on. The workspace title is tracking metadata, not implementation instructions."}${
     attachments.length > 0
-      ? `\n\nAttached images:\n${attachments.map((attachment) => `- ${attachment}`).join("\n")}\nInspect these images as part of the user's task.`
+      ? `\n\nAttached images:\n${attachments.map((attachment) => `- ${attachment}`).join("\n")}\n${task ? "Inspect these images as part of the user's task." : "Keep these images available for the user's next request."}`
       : ""
   }`;
 }

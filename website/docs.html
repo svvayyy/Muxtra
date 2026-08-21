@@ -145,6 +145,8 @@ muxtra --version</code></pre>
               release exists. Use <code>muxtra@beta</code> to stay on the intended prerelease
               channel.
             </p>
+            <p>Update an npm installation to the newest beta release at any time:</p>
+            <pre class="code-block"><code>muxtra update</code></pre>
             <p>
               Then open the Git project you want to use and confirm that Muxtra can safely operate
               it:
@@ -158,8 +160,8 @@ muxtra doctor</code></pre>
             <div class="section-kicker">Quick start</div>
             <h2>Your first parallel run</h2>
             <p>
-              Open an existing Git project with at least one commit. Prepare it once, then start a
-              task:
+              Open an existing Git project with at least one commit. Prepare it once, then give the
+              task a short tracking title:
             </p>
             <pre class="code-block"><code>cd your-project
 muxtra setup
@@ -169,7 +171,15 @@ muxtra start "Build the dashboard navigation" --agent codex</code></pre>
               sees the same workflow. Muxtra detects common package checks automatically and stops
               with clear instructions if your project still needs checks configured.
             </p>
-            <p>In another terminal, send a separate task to a different provider:</p>
+            <p>
+              The quoted title names the workspace, branch, and status entry; it is not sent as the
+              agent's first user prompt. Give the full request in the native agent session, or use
+              <code>--prompt</code> when you deliberately want to send it immediately:
+            </p>
+            <pre
+              class="code-block"
+            ><code>muxtra start "Dashboard navigation" --agent codex --prompt "Implement responsive dashboard navigation using the existing design system."</code></pre>
+            <p>In another terminal, open a separate task with a different provider:</p>
             <pre class="code-block"><code>muxtra start "Add dashboard search" --agent claude
 muxtra status</code></pre>
             <div class="docs-note">
@@ -199,7 +209,8 @@ muxtra team "Build account settings"</code></pre>
               <code>muxtra team</code> creates two linked, isolated workspaces and prints one
               <code>muxtra launch</code> command for each native CLI. After both agents commit and
               finish verification, run the exact two-task <code>muxtra combine</code> command shown
-              in the output.
+              in the output. The team title is tracking metadata; each agent waits for its own
+              detailed request after launching.
             </p>
             <div class="docs-note">
               <strong>Personal choices stay local.</strong> Lane preferences are stored in Muxtra’s
@@ -340,16 +351,23 @@ muxtra stop dashboard-navigation</code></pre>
                 <p>Prepare the current Git project for the guided workflow.</p>
               </div>
               <div>
-                <code>muxtra start &lt;task&gt; [--agent &lt;agent&gt;] [--lane design|code]</code>
-                <p>Create an isolated task and launch its agent.</p>
+                <code
+                  >muxtra start &lt;title&gt; [--agent &lt;agent&gt;] [--lane design|code] [--prompt
+                  &lt;prompt&gt;]</code
+                >
+                <p>Create a titled isolated task and launch its agent.</p>
               </div>
               <div>
                 <code>muxtra lanes [set design|code ...]</code>
                 <p>View or save local provider and model defaults for each responsibility.</p>
               </div>
               <div>
-                <code>muxtra team &lt;task&gt;</code>
+                <code>muxtra team &lt;title&gt;</code>
                 <p>Create linked design and code tasks in separate isolated workspaces.</p>
+              </div>
+              <div>
+                <code>muxtra update</code>
+                <p>Update an npm installation to the newest Muxtra beta release.</p>
               </div>
               <div>
                 <code>muxtra status [--details] [--fetch] [--json]</code>

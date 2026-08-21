@@ -26,6 +26,7 @@ import { stopCommand } from "./commands/stop.js";
 import { setupCommand } from "./commands/setup.js";
 import { startCommand } from "./commands/start.js";
 import { teamCommand } from "./commands/team.js";
+import { updateCommand } from "./commands/update.js";
 import { CliError } from "./errors.js";
 import { gitRoot } from "./git.js";
 import { resolveIdentity } from "./identity.js";
@@ -72,12 +73,13 @@ program
 
 program
   .command("start")
-  .argument("<task>", "describe what you want the agent to do")
-  .description("Create an isolated workspace and launch one agent task")
+  .argument("<title>", "short title used to identify and track the task")
+  .description("Create an isolated workspace and open an agent session")
   .option("--agent <agent>", "agent provider, for example codex or claude")
   .option("--lane <lane>", "task lane: design or code")
   .option("--model <model>", "exact provider model for this task")
-  .option("--name <name>", "optional short name; generated from the task by default")
+  .option("--name <name>", "optional workspace name; generated from the title by default")
+  .option("--prompt <prompt>", "explicit initial user prompt for the agent")
   .option("--base <ref>", "advanced: explicit Git ref to branch from")
   .option("--fetch", "fetch origin before resolving the base")
   .option(
@@ -89,19 +91,20 @@ program
   .option("--no-launch", "create the task without opening the agent yet")
   .action(
     (
-      task: string,
+      title: string,
       options: {
         agent?: string;
         lane?: string;
         model?: string;
         name?: string;
+        prompt?: string;
         base?: string;
         fetch?: boolean;
         image?: string[];
         launch: boolean;
       },
     ) =>
-      startCommand(process.cwd(), task, { ...options, images: options.image }).then(
+      startCommand(process.cwd(), title, { ...options, images: options.image }).then(
         () => undefined,
       ),
   );
@@ -125,7 +128,7 @@ lanes
 
 program
   .command("team")
-  .argument("<task>", "describe the feature both lanes should build")
+  .argument("<title>", "short title used to identify the coordinated work")
   .description("Create coordinated design and code tasks with separate models")
   .option("--design-agent <agent>", "override the configured design provider")
   .option("--design-model <model>", "override the configured design model")
@@ -141,7 +144,7 @@ program
   )
   .action(
     (
-      task: string,
+      title: string,
       options: {
         designAgent?: string;
         designModel?: string;
@@ -152,8 +155,15 @@ program
         image?: string[];
       },
     ) =>
-      teamCommand(process.cwd(), task, { ...options, images: options.image }).then(() => undefined),
+      teamCommand(process.cwd(), title, { ...options, images: options.image }).then(
+        () => undefined,
+      ),
   );
+
+program
+  .command("update")
+  .description("Update Muxtra to the newest npm beta release")
+  .action(() => updateCommand(process.cwd()));
 
 program
   .command("init")
@@ -391,7 +401,7 @@ program
 
 program.hook("preAction", async (_command, actionCommand) => {
   const command = actionCommand.name();
-  if (["agent-status", "agents", "init", "release"].includes(command)) return;
+  if (["agent-status", "agents", "init", "release", "update"].includes(command)) return;
 
   const root = await gitRoot(process.cwd());
   const agent = actionCommand.opts<{ agent?: string }>().agent;

@@ -18,7 +18,7 @@ export async function setupCommand(cwd: string): Promise<void> {
       printMissingChecks();
       return;
     }
-    console.log('Start work with: muxtra start "Describe the task" --agent codex');
+    console.log('Start work with: muxtra start "Short task title" --agent codex');
     return;
   }
 
@@ -60,7 +60,7 @@ export async function setupCommand(cwd: string): Promise<void> {
   }
 
   console.log("\n✓ Muxtra is ready.");
-  console.log('Start your first task with: muxtra start "Describe what you want" --agent codex');
+  console.log('Start your first task with: muxtra start "Short task title" --agent codex');
 }
 
 function printMissingChecks(): void {
