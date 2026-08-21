@@ -1,0 +1,12 @@
+# Muxtra welcomes search engines and AI systems that respect robots.txt.
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: *
+Allow: /
+
+Sitemap: https://muxtra.dev/sitemap.xml
