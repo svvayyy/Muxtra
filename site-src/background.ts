@@ -12,7 +12,8 @@ const blueHour = normalizeParams({
   interaction: { pointer: 0.6, scroll: 0.25 },
   kind: "radial-glow",
   loopSeconds: 10,
-  scale: 1,
+  // Slightly smaller ring than the preset (1) so the hero has room under it.
+  scale: 1.15,
   seed: 31,
   speed: 0.9,
   warp: 0.35,
