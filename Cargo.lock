@@ -279,6 +279,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "muxtra-build"
+version = "0.1.0"
+dependencies = [
+ "muxtra-manifest",
+]
+
+[[package]]
 name = "muxtra-manifest"
 version = "0.1.0"
 dependencies = [
