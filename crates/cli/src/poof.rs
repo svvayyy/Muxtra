@@ -455,7 +455,13 @@ pub fn write(args: PoofWriteArgs) -> Result<(), Failure> {
     out.write_all(&tables.tail)?;
     out.seek(SeekFrom::Start(0))?;
     out.write_all(&tables.head)?;
-    out.sync_all()?;
+    // Raw drives are not buffered, and macOS cannot fsync them (it answers
+    // "Inappropriate ioctl"), so that one error is fine.
+    if let Err(e) = out.sync_all()
+        && e.raw_os_error() != Some(libc::ENOTTY)
+    {
+        return Err(e.into());
+    }
     eprintln!(
         "{}",
         style::err().paint(
