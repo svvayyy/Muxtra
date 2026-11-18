@@ -8,6 +8,8 @@ use muxtra_manifest::{Manifest, Network, Remote};
 use std::fmt;
 
 pub mod check;
+pub mod disk;
+pub mod hardware;
 
 /// The script that runs inside the builder VM.
 pub const BUILDER_SH: &str = include_str!("../assets/builder.sh");
@@ -198,6 +200,16 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
     config.push_str(&format!("SSH_KEYS=({})\n", quote_list(&inputs.ssh_keys)));
     config.push_str(&format!("START=({})\n", quote_list(&start)));
     config.push_str(&format!("PACKAGES=({})\n", quote_list(&packages)));
+    let hw_packages: Vec<String> = hardware::packages(&manifest.system.mac)
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    let early: Vec<String> = hardware::early_modules(&manifest.system.mac)
+        .iter()
+        .map(|m| m.to_string())
+        .collect();
+    config.push_str(&format!("HW_PACKAGES=({})\n", quote_list(&hw_packages)));
+    config.push_str(&format!("EARLY_MODULES=({})\n", quote_list(&early)));
 
     Ok(Plan {
         config_sh: config,
@@ -595,6 +607,8 @@ mod tests {
             "SSH_KEYS",
             "START",
             "PACKAGES",
+            "HW_PACKAGES",
+            "EARLY_MODULES",
         ] {
             assert!(
                 BUILDER_SH.contains(&format!("${var}"))

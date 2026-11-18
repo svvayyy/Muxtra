@@ -95,7 +95,8 @@ cp /etc/resolv.conf "$TARGET/etc/resolv.conf"
 
 # ---------------------------------------------------------------------------
 step 4 "Adding modules: ${MODULE_LABEL}"
-extra=()
+# Firmware and microcode this Mac model needs.
+extra=("${HW_PACKAGES[@]}")
 if [ -n "$NODE_MAJOR" ]; then
   install -d -m 0755 "$TARGET/etc/apt/keyrings"
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
@@ -131,7 +132,8 @@ EOF
 cat > "$TARGET/etc/fstab" <<'EOF'
 # The root slot (A or B) comes from the kernel command line.
 PARTLABEL=muxtra-efi   /boot/efi  vfat  umask=0077          0 2
-PARTLABEL=muxtra-home  /home      ext4  defaults,noatime    0 2
+# x-systemd.growfs: home grows to fill whatever drive Muxtra lands on.
+PARTLABEL=muxtra-home  /home      ext4  defaults,noatime,x-systemd.growfs  0 2
 EOF
 
 # The account.
@@ -223,6 +225,11 @@ step 6 "Installing the bootloader"
 echo "root=PARTLABEL=muxtra-root-a rw quiet console=tty0 console=ttyS0,115200" \
   > "$TARGET/etc/kernel/cmdline"
 echo muxtra > "$TARGET/etc/kernel/entry-token"
+if [ ${#EARLY_MODULES[@]} -gt 0 ]; then
+  # Load these drivers before the login prompt (the built-in keyboard).
+  printf '%s\n' "${EARLY_MODULES[@]}" >> "$TARGET/etc/initramfs-tools/modules"
+  in_target update-initramfs -u -k all >/dev/null
+fi
 # Hide the builder's own firmware so nothing tries to change its boot
 # settings: swap in an empty /sys while systemd-boot installs. The Mac
 # finds systemd-boot at the standard EFI/BOOT/BOOTX64.EFI path anyway.
