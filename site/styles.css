@@ -6,7 +6,6 @@
   --ice: #8fd0f5;
   --blue: #3d6fd0;
   --deep: #1b1846;
-  --sun: #ffb35c;
   --line: rgba(143, 208, 245, 0.13);
   --panel: rgba(6, 10, 24, 0.78);
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Inter, system-ui, sans-serif;
@@ -135,23 +134,6 @@ main, .foot { position: relative; z-index: 1; }
   text-align: center;
   color: #a9b2c3;
   text-wrap: balance;
-}
-
-.pulse {
-  display: inline-block;
-  vertical-align: 1px;
-  margin-right: 10px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--sun);
-  animation: pulse 2.4s ease-out infinite;
-}
-
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(255, 179, 92, 0.55); }
-  70% { box-shadow: 0 0 0 9px rgba(255, 179, 92, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 179, 92, 0); }
 }
 
 /* The name sits inside the dark disc of the eclipse. */
@@ -425,6 +407,5 @@ main, .foot {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .pulse { animation: none; }
   .button, .bar-link { transition: none; }
 }
