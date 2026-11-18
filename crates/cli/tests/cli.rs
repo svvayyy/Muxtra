@@ -258,7 +258,7 @@ fn unfinished_commands_still_check_the_manifest() {
             .status
             .success()
     );
-    for command in ["build", "check", "poof", "flash"] {
+    for command in ["check", "poof", "flash"] {
         let out = muxtra(tmp.path(), &[command], None);
         let said = text(&out);
         assert!(
@@ -342,4 +342,100 @@ fn manifest_problems_name_the_field() {
     let said = text(&out);
     assert!(said.contains("✗ muxtra.toml has 1 problem:"), "{said}");
     assert!(said.contains("  system.name · "), "{said}");
+}
+
+fn muxtra_with_home(dir: &Path, home: &Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_muxtra"))
+        .args(args)
+        .current_dir(dir)
+        .env("HOME", home)
+        .env_remove("FORCE_COLOR")
+        .env_remove("NO_COLOR")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap()
+}
+
+#[test]
+fn build_uses_your_existing_ssh_key() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    fs::create_dir_all(home.path().join(".ssh")).unwrap();
+    let key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExistingKey me@laptop";
+    fs::write(home.path().join(".ssh/id_ed25519.pub"), format!("{key}\n")).unwrap();
+    assert!(
+        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
+            .status
+            .success()
+    );
+    let out = muxtra_with_home(tmp.path(), home.path(), &["build", "--print-config"]);
+    assert!(out.status.success(), "{}", text(&out));
+    let config = String::from_utf8_lossy(&out.stdout);
+    assert!(config.contains(&format!("SSH_KEYS=('{key}')")), "{config}");
+    assert!(config.contains("NODE_MAJOR='26'"), "{config}");
+}
+
+#[test]
+fn build_makes_a_key_when_you_have_none() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    assert!(
+        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
+            .status
+            .success()
+    );
+    let out = muxtra_with_home(tmp.path(), home.path(), &["build", "--print-config"]);
+    assert!(out.status.success(), "{}", text(&out));
+    let made = fs::read_to_string(home.path().join(".ssh/id_ed25519.pub")).unwrap();
+    let config = String::from_utf8_lossy(&out.stdout);
+    assert!(config.contains(made.trim()), "{config}");
+    // The note about the new key goes to stderr, never into the config.
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("made one"),
+        "{}",
+        text(&out)
+    );
+    assert!(!config.contains("made one"));
+}
+
+#[test]
+fn build_explains_what_it_cannot_build_yet() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    assert!(
+        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
+            .status
+            .success()
+    );
+    let path = tmp.path().join("muxtra.toml");
+    let text_now = fs::read_to_string(&path).unwrap();
+    fs::write(
+        &path,
+        text_now.replace("\"tailscale\"]", "\"tailscale\", \"ngrok\"]"),
+    )
+    .unwrap();
+    let out = muxtra_with_home(tmp.path(), home.path(), &["build", "--print-config"]);
+    assert!(!out.status.success());
+    assert!(text(&out).contains("cannot be built yet"), "{}", text(&out));
+}
+
+#[test]
+fn build_needs_the_password_hash_it_was_promised() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    assert!(
+        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
+            .status
+            .success()
+    );
+    let path = tmp.path().join("muxtra.toml");
+    let text_now = fs::read_to_string(&path).unwrap();
+    fs::write(
+        &path,
+        text_now.replace("password = false", "password = true"),
+    )
+    .unwrap();
+    let out = muxtra_with_home(tmp.path(), home.path(), &["build", "--print-config"]);
+    assert!(!out.status.success());
+    assert!(text(&out).contains("muxtra passwd"), "{}", text(&out));
 }

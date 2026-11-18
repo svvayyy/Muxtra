@@ -55,6 +55,21 @@ pub fn load_manifest(path: &Path) -> Result<(PathBuf, Manifest), Failure> {
     Ok((path, manifest))
 }
 
+/// The password hash from muxtra.secrets next to the manifest, if any.
+pub fn read_password_hash(dir: &Path) -> Result<Option<String>, Failure> {
+    let path = dir.join(SECRETS_FILE);
+    let Ok(text) = fs::read_to_string(&path) else {
+        return Ok(None);
+    };
+    let doc: toml_edit::DocumentMut = text
+        .parse()
+        .map_err(|e| Failure(format!("{SECRETS_FILE} could not be read: {e}")))?;
+    Ok(doc
+        .get("password_hash")
+        .and_then(|v| v.as_str())
+        .map(str::to_string))
+}
+
 /// Hashes a password for /etc/shadow (SHA-512 crypt, `$6$`).
 pub fn hash_password(password: &str) -> Result<String, Failure> {
     use sha_crypt::{PasswordHasher, ShaCrypt};
@@ -74,7 +89,7 @@ pub fn write_secrets(dir: &Path, password_hash: Option<&str>) -> Result<(), Fail
                 "# Created by Muxtra. Keep this file private. Git ignores it.\n# Only a hash of the password is stored, never the password itself.\npassword_hash = \"{hash}\"\n"
             );
             write_private(&path, &text)?;
-            ensure_gitignored(dir)?;
+            ensure_gitignored(dir, SECRETS_FILE)?;
         }
         None => {
             if path.exists() {
@@ -103,18 +118,18 @@ fn write_private(path: &Path, text: &str) -> Result<(), Failure> {
     Ok(())
 }
 
-/// Adds muxtra.secrets to .gitignore in this folder if it is not there yet.
-fn ensure_gitignored(dir: &Path) -> Result<(), Failure> {
+/// Adds an entry to .gitignore in this folder if it is not there yet.
+pub fn ensure_gitignored(dir: &Path, entry: &str) -> Result<(), Failure> {
     let path = dir.join(".gitignore");
     let existing = fs::read_to_string(&path).unwrap_or_default();
-    if existing.lines().any(|l| l.trim() == SECRETS_FILE) {
+    if existing.lines().any(|l| l.trim() == entry) {
         return Ok(());
     }
     let mut text = existing;
     if !text.is_empty() && !text.ends_with('\n') {
         text.push('\n');
     }
-    text.push_str(SECRETS_FILE);
+    text.push_str(entry);
     text.push('\n');
     fs::write(&path, text)?;
     Ok(())

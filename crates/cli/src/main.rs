@@ -4,7 +4,10 @@
 //! friendly questions. With no keyboard (an agent, a script, CI) it never
 //! waits: it uses the defaults and prints what it chose.
 
+mod build;
 mod files;
+mod host;
+mod keys;
 mod new;
 mod passwd;
 mod prompt;
@@ -32,7 +35,7 @@ enum Command {
     /// Start a muxtra.toml for a Mac
     New(new::NewArgs),
     /// Build a system image from muxtra.toml
-    Build(ManifestArgs),
+    Build(build::BuildArgs),
     /// Boot the image in a virtual machine and report what works
     Check(ManifestArgs),
     /// Put Muxtra on a Mac, over a USB stick or a cable
@@ -51,6 +54,7 @@ pub struct ManifestArgs {
 }
 
 /// An error worth showing to a person, already in plain English.
+#[derive(Debug)]
 pub struct Failure(pub String);
 
 impl<E: std::fmt::Display> From<E> for Failure {
@@ -64,7 +68,7 @@ fn main() -> ExitCode {
     let result = match cli.command {
         Command::New(args) => new::run(args),
         Command::Passwd(args) => passwd::run(args),
-        Command::Build(args) => not_yet(&args, "Building", "next up in Phase 1"),
+        Command::Build(args) => build::run(args),
         Command::Check(args) => {
             not_yet(&args, "Checking in a virtual machine", "coming in Phase 1")
         }
