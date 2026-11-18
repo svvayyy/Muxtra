@@ -7,6 +7,8 @@
 use muxtra_manifest::{Manifest, Network, Remote};
 use std::fmt;
 
+pub mod check;
+
 /// The script that runs inside the builder VM.
 pub const BUILDER_SH: &str = include_str!("../assets/builder.sh");
 
@@ -203,6 +205,27 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
         node_major,
         modules_label,
     })
+}
+
+/// Changes whenever a build would come out different: the settings, the
+/// builder script, or the image size. `muxtra check` compares it with the
+/// one saved next to the last image to know when to rebuild.
+pub fn fingerprint(plan: &Plan) -> String {
+    // FNV-1a, 64 bit. Only used to notice changes, not for security.
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for part in [
+        plan.config_sh.as_bytes(),
+        BUILDER_SH.as_bytes(),
+        &IMAGE_BYTES.to_le_bytes(),
+    ] {
+        for byte in part {
+            hash ^= u64::from(*byte);
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        hash ^= 0xff;
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{hash:016x}")
 }
 
 /// `node` means the current LTS. `node@24` pins a major version.
@@ -474,6 +497,22 @@ mod tests {
         };
         let p = plan(&manifest(&text), &with_hash).unwrap();
         assert!(p.config_sh.contains("PASSWORD_HASH='$6$salt$hash'\n"));
+    }
+
+    #[test]
+    fn fingerprint_follows_the_settings() {
+        let a = plan(&manifest(AGENT_BOX), &inputs()).unwrap();
+        let b = plan(&manifest(BLANK), &inputs()).unwrap();
+        assert_eq!(fingerprint(&a), fingerprint(&a.clone()));
+        assert_ne!(fingerprint(&a), fingerprint(&b));
+        let other_key = Inputs {
+            ssh_keys: vec!["ssh-ed25519 AAAA other".into()],
+            ..inputs()
+        };
+        assert_ne!(
+            fingerprint(&a),
+            fingerprint(&plan(&manifest(AGENT_BOX), &other_key).unwrap())
+        );
     }
 
     #[test]
