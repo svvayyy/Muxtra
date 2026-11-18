@@ -11,7 +11,7 @@
   <meta property="og:url" content="https://muxtra.dev/">
   <meta property="og:type" content="website">
   <link rel="icon" href="favicon.svg?v=17f26b6bba" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=fe62b0d558">
+  <link rel="stylesheet" href="styles.css?v=4c5b0d6080">
 </head>
 <body>
   <canvas class="sky" id="sky" aria-hidden="true"></canvas>
@@ -47,25 +47,21 @@
     </section>
 
     <section class="goals" id="goals" aria-labelledby="goals-title">
-      <h2 class="label" id="goals-title">What we’re building</h2>
+      <h2 class="title" id="goals-title">What we’re building</h2>
       <ol>
         <li>
-          <span class="num">01</span>
           <h3>Mac hardware, handled</h3>
           <p>A hardware database for each Intel Mac, from older iMacs to T2 MacBooks, with drivers that are tested on real machines.</p>
         </li>
         <li>
-          <span class="num">02</span>
           <h3>Made for agents</h3>
           <p>One manifest describes the whole system. Every module has its own folder and a clear contract, so an agent can swap parts without guessing.</p>
         </li>
         <li>
-          <span class="num">03</span>
           <h3>Proof, not diffs</h3>
           <p>Every change builds, boots in a virtual machine, and reports what works in plain English. You read the result, not the code.</p>
         </li>
         <li>
-          <span class="num">04</span>
           <h3>Hard to brick</h3>
           <p>A/B boot rolls back anything that breaks. Risky modules like the bootloader stay locked until you unlock them on purpose.</p>
         </li>
@@ -73,11 +69,11 @@
     </section>
 
     <section class="how" id="how" aria-labelledby="how-title">
-      <h2 class="label" id="how-title">How it should feel</h2>
+      <h2 class="title" id="how-title">How it should feel</h2>
       <p class="section-lede">Describe the system you want. Muxtra builds it, boots it, and tells you what works.</p>
       <div class="panes">
         <figure class="pane">
-          <figcaption><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>muxtra.toml</figcaption>
+          <figcaption>muxtra.toml</figcaption>
 <pre><code><span class="c"># One file describes the whole system</span>
 <span class="k">[system]</span>
 name <span class="o">=</span> <span class="s">"agent-box"</span>
@@ -93,7 +89,7 @@ start  <span class="o">=</span> [<span class="s">"tailscaled"</span>, <span clas
 locked <span class="o">=</span> [<span class="s">"bootloader"</span>, <span class="s">"kernel"</span>]</code></pre>
         </figure>
         <figure class="pane">
-          <figcaption><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>terminal</figcaption>
+          <figcaption>terminal</figcaption>
 <pre><code><span class="p">$</span> muxtra check
 <span class="ok">✓</span> Built in 48s
 <span class="ok">✓</span> Booted in a virtual machine in 2.1s
@@ -110,7 +106,7 @@ last good build comes back on its own.</code></pre>
     </section>
 
     <section class="macs" id="macs" aria-labelledby="macs-title">
-      <h2 class="label" id="macs-title">Which Macs</h2>
+      <h2 class="title" id="macs-title">Which Macs</h2>
       <ul>
         <li>
           <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" class="moon-dark"/><path d="M16 5a11 11 0 0 1 0 22a6 11 0 0 0 0-22z" class="moon-lit"/></svg>
@@ -140,27 +136,21 @@ last good build comes back on its own.</code></pre>
     </section>
 
     <section class="road" id="roadmap" aria-labelledby="road-title">
-      <h2 class="label" id="road-title">The road to Aphelion</h2>
+      <h2 class="title" id="road-title">The road to Aphelion</h2>
       <p class="section-lede">Aphelion is the point in an orbit that’s farthest from the sun. It’s also the codename for Muxtra 1.0.</p>
 
       <div class="orbit" aria-hidden="true">
         <svg viewBox="-190 -110 720 230" preserveAspectRatio="xMidYMid meet">
           <defs>
             <radialGradient id="sun-glow">
-              <stop offset="0" stop-color="#fff1d6" stop-opacity=".85"/>
-              <stop offset=".35" stop-color="#ffc27a" stop-opacity=".3"/>
-              <stop offset="1" stop-color="#ff9a4a" stop-opacity="0"/>
+              <stop offset="0" stop-color="#ffffff" stop-opacity=".45"/>
+              <stop offset=".4" stop-color="#ffffff" stop-opacity=".08"/>
+              <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
             </radialGradient>
             <radialGradient id="sun-core" cx=".42" cy=".38">
-              <stop offset="0" stop-color="#fffaf0"/>
-              <stop offset=".55" stop-color="#ffd59a"/>
-              <stop offset="1" stop-color="#ffaa5c"/>
+              <stop offset="0" stop-color="#ffffff"/>
+              <stop offset="1" stop-color="#cfd0d4"/>
             </radialGradient>
-            <linearGradient id="orbit-line" x1="0" x2="1">
-              <stop offset="0" stop-color="#ffc98a" stop-opacity=".5"/>
-              <stop offset=".5" stop-color="#8fd0f5" stop-opacity=".35"/>
-              <stop offset="1" stop-color="#8fd0f5" stop-opacity=".2"/>
-            </linearGradient>
           </defs>
           <path id="orbit-path" class="orbit-path" d=""/>
           <circle cx="0" cy="0" r="62" fill="url(#sun-glow)"/>
@@ -179,27 +169,27 @@ last good build comes back on its own.</code></pre>
 
       <ol class="phases">
         <li class="now">
-          <span class="phase-num">1 <em>Now</em></span>
+          <span class="phase-num">Phase 1 <em>Now</em></span>
           <h3>Skeleton</h3>
           <p>One manifest, swappable modules, and a check that boots everything in a virtual machine.</p>
         </li>
         <li>
-          <span class="phase-num">2</span>
+          <span class="phase-num">Phase 2</span>
           <h3>Real Macs</h3>
           <p>USB boot on real hardware. Macs without a T chip first, then T1, then T2.</p>
         </li>
         <li>
-          <span class="phase-num">3</span>
+          <span class="phase-num">Phase 3</span>
           <h3>Agent box</h3>
           <p>A headless build with SSH and remote access, ready for coding agents out of the box.</p>
         </li>
         <li>
-          <span class="phase-num">4</span>
+          <span class="phase-num">Phase 4</span>
           <h3>Safety net</h3>
           <p>A/B boot with automatic rollback, and locked modules for the risky parts.</p>
         </li>
         <li class="goal">
-          <span class="phase-num">1.0</span>
+          <span class="phase-num">Release</span>
           <h3>Aphelion</h3>
           <p>The first beta release, for Intel Macs.</p>
         </li>
