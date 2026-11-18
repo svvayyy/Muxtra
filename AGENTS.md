@@ -11,6 +11,8 @@ A Linux base for Intel Macs, built for AI agents. A `muxtra.toml` manifest descr
 | Path | What lives there |
 |---|---|
 | `crates/manifest` | Reads and checks `muxtra.toml`. No disk or network access. |
+| `crates/build` | Turns a manifest into settings for the builder VM, and reads its progress back. No disk or network access. |
+| `crates/build/assets/builder.sh` | Runs inside the hidden Debian VM and writes the disk image. Its `MUXTRA-STEP` markers are read by the CLI. |
 | `crates/cli` | The `muxtra` command: `new`, `build`, `check`, `poof` (quiet alias `flash`), `passwd` |
 | `starters/` | Ready-made manifests that `muxtra new` copies. `agent-box` is the default. |
 | `site/`, `site-src/` | muxtra.dev, deployed by GitHub Pages. Run `scripts/build-site.sh` after changing either. |
@@ -26,6 +28,8 @@ cargo test
 ```
 
 All three must pass. CI runs them on Linux and macOS.
+
+`muxtra build` itself needs QEMU and a few minutes, so CI does not run it. After changing `builder.sh` or the build command, run a real build and boot the image (see `muxtra check`) before committing.
 
 ## Rules
 
