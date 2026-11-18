@@ -1,4 +1,4 @@
-// Starfield and a Keplerian orbit for the hero.
+// Starfield and the Keplerian orbit on the roadmap.
 // The planet follows Kepler's equation, so it really does slow down near aphelion.
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -33,8 +33,7 @@ function eccentricAnomaly(meanAnomaly) {
 
 const path = document.getElementById("orbit-path")
 const planet = document.getElementById("planet")
-const peri = document.getElementById("apsis-peri")
-const aph = document.getElementById("apsis-aph")
+const stops = document.querySelectorAll(".stop[data-ea]")
 
 if (path && planet) {
   const points = Array.from({ length: 181 }, (_, i) => {
@@ -43,8 +42,11 @@ if (path && planet) {
   })
   path.setAttribute("d", `M${points.join("L")}Z`)
 
-  peri.setAttribute("transform", `translate(${-A * (1 - E)} 0)`)
-  aph.setAttribute("transform", `translate(${A * (1 + E)} 0)`)
+  // Roadmap stops sit along the near half of the orbit, perihelion to aphelion.
+  stops.forEach((stop) => {
+    const p = orbitPoint(Number(stop.dataset.ea))
+    stop.setAttribute("transform", `translate(${p.x.toFixed(2)} ${p.y.toFixed(2)})`)
+  })
 
   const place = (ea) => {
     const p = orbitPoint(ea)
