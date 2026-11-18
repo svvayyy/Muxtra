@@ -1,0 +1,12 @@
+[package]
+name = "muxtra-manifest"
+description = "Reads and checks muxtra.toml, the file that describes a Muxtra system."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = "1"
