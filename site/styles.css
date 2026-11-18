@@ -63,7 +63,16 @@ main, .foot { position: relative; z-index: 1; }
   width: 100%;
   height: 100%;
   display: block;
-  background: var(--space);
+  /* Shown before the shader's first frame and on devices without WebGL.
+     It overrides the engine's own fallback so the ring lines up with the name. */
+  background: radial-gradient(circle at 50% calc(50% + 4cqmin),
+    var(--space) 0,
+    var(--space) 21.4cqmin,
+    #eef8ff 22.6cqmin,
+    #8fd0f5 23.8cqmin,
+    rgba(61, 111, 208, 0.5) 29cqmin,
+    rgba(27, 24, 70, 0.4) 44cqmin,
+    var(--space) 72cqmin) !important;
 }
 
 .hero-fade {
