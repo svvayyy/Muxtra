@@ -6,6 +6,7 @@
 
 mod files;
 mod new;
+mod passwd;
 mod prompt;
 
 use clap::{Args, Parser, Subcommand};
@@ -35,6 +36,8 @@ enum Command {
     /// Put Muxtra on a Mac, over a USB stick or a cable
     #[command(alias = "flash")]
     Poof(ManifestArgs),
+    /// Set or remove the password for the Mac's own keyboard
+    Passwd(passwd::PasswdArgs),
 }
 
 /// Where to find muxtra.toml.
@@ -58,6 +61,7 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match cli.command {
         Command::New(args) => new::run(args),
+        Command::Passwd(args) => passwd::run(args),
         Command::Build(args) => not_yet(&args, "Building", "next up in Phase 1"),
         Command::Check(args) => {
             not_yet(&args, "Checking in a virtual machine", "coming in Phase 1")

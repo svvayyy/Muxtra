@@ -207,6 +207,48 @@ fn password_from_stdin_is_hashed_and_kept_out_of_git() {
 }
 
 #[test]
+fn passwd_needs_a_person_or_a_pipe() {
+    let tmp = tempfile::tempdir().unwrap();
+    assert!(
+        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
+            .status
+            .success()
+    );
+    let out = muxtra(tmp.path(), &["passwd"], None);
+    assert!(!out.status.success());
+    assert!(text(&out).contains("--password-stdin"), "{}", text(&out));
+}
+
+#[test]
+fn passwd_sets_then_removes() {
+    let tmp = tempfile::tempdir().unwrap();
+    assert!(
+        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
+            .status
+            .success()
+    );
+
+    let set = muxtra(
+        tmp.path(),
+        &["passwd", "--password-stdin"],
+        Some("hunter2\n"),
+    );
+    assert!(set.status.success(), "{}", text(&set));
+    let (raw, m) = read_manifest(tmp.path());
+    assert!(m.user.password);
+    assert!(
+        raw.contains("# `muxtra passwd` sets one"),
+        "comment lost: {raw}"
+    );
+    assert!(tmp.path().join("muxtra.secrets").exists());
+
+    let removed = muxtra(tmp.path(), &["passwd", "--remove"], None);
+    assert!(removed.status.success(), "{}", text(&removed));
+    assert!(!read_manifest(tmp.path()).1.user.password);
+    assert!(!tmp.path().join("muxtra.secrets").exists());
+}
+
+#[test]
 fn unfinished_commands_still_check_the_manifest() {
     let tmp = tempfile::tempdir().unwrap();
     assert!(
