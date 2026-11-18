@@ -1,5 +1,6 @@
 //! Questions for a person at the keyboard. Never used when there is none.
 
+use crate::style::{self, Role};
 use std::io::{self, BufRead, IsTerminal, Write};
 
 /// True when a person can answer questions: both input and output are a terminal.
@@ -11,7 +12,10 @@ pub fn someone_is_here() -> bool {
 pub fn ask(question: &str, default: Option<&str>) -> io::Result<String> {
     loop {
         match default {
-            Some(d) => print!("{question} [{d}]: "),
+            Some(d) => print!(
+                "{question} {}: ",
+                style::out().paint(Role::Dim, &format!("[{d}]"))
+            ),
             None => print!("{question}: "),
         }
         io::stdout().flush()?;

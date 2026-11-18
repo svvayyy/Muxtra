@@ -8,10 +8,12 @@ mod files;
 mod new;
 mod passwd;
 mod prompt;
+mod style;
 
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 use std::process::ExitCode;
+use style::Role;
 
 #[derive(Parser)]
 #[command(
@@ -71,7 +73,15 @@ fn main() -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(Failure(message)) => {
-            eprintln!("{}", message.trim_end());
+            // An empty message means the command already explained itself.
+            if !message.is_empty() {
+                let e = style::err();
+                eprintln!(
+                    "{} {}",
+                    e.paint(Role::Err, "✗"),
+                    e.rich(Role::Plain, message.trim_end())
+                );
+            }
             ExitCode::FAILURE
         }
     }
@@ -81,11 +91,22 @@ fn main() -> ExitCode {
 /// manifest, so they are useful today.
 fn not_yet(args: &ManifestArgs, what: &str, when: &str) -> Result<(), Failure> {
     let (path, manifest) = files::load_manifest(&args.manifest)?;
+    let o = style::out();
     println!(
-        "{} looks good: {} for {}.",
-        path.display(),
-        manifest.system.name,
-        manifest.system.mac
+        "{} {} looks good: {} for {}.",
+        o.paint(Role::Ok, "✓"),
+        o.paint(Role::Cmd, &path.display().to_string()),
+        o.paint(Role::Value, &manifest.system.name),
+        o.paint(Role::Value, &manifest.system.mac)
     );
-    Err(Failure(format!("{what} is not ready yet. It is {when}.")))
+    let e = style::err();
+    eprintln!(
+        "{} {}",
+        e.paint(Role::Warn, "!"),
+        e.paint(
+            Role::Warn,
+            &format!("{what} is not ready yet. It is {when}.")
+        )
+    );
+    Err(Failure(String::new()))
 }

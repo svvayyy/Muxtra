@@ -1,5 +1,6 @@
 //! `muxtra new`: write a muxtra.toml from a starter.
 
+use crate::style::{self, Role};
 use crate::{Failure, files, prompt};
 use clap::{Args, ValueEnum};
 use muxtra_manifest::{FILE_NAME, Manifest, Remote, check_host_name, is_mac_model};
@@ -216,47 +217,99 @@ pub fn run(args: NewArgs) -> Result<(), Failure> {
     } else {
         ""
     };
+    let o = style::out();
     let remote: Vec<String> = manifest
         .modules
         .remote
         .iter()
         .map(|r| match r {
-            Remote::Ssh => "ssh (includes SFTP)".to_string(),
-            other => format!("{other:?}").to_lowercase(),
+            Remote::Ssh => format!(
+                "{}{}",
+                o.paint(Role::Value, "ssh"),
+                o.paint(Role::Dim, " (includes SFTP)")
+            ),
+            other => o.paint(Role::Value, &format!("{other:?}").to_lowercase()),
         })
         .collect();
     println!(
-        "Created {} from the {} starter.\n",
-        path.display(),
-        starter.label()
+        "{} Created {} from the {} starter.\n",
+        o.paint(Role::Ok, "✓"),
+        o.paint(Role::Cmd, &path.display().to_string()),
+        o.paint(Role::Accent, starter.label())
     );
-    println!("  Mac       {mac}{this}");
-    println!("  Name      {name}. Reach it with `ssh {name}` once Muxtra is on it.");
+    println!(
+        "  {} {}{}",
+        o.label("Mac"),
+        o.paint(Role::Value, &mac),
+        o.paint(Role::Dim, this)
+    );
+    println!(
+        "  {} {}{}",
+        o.label("Name"),
+        o.paint(Role::Value, &name),
+        o.rich(
+            Role::Dim,
+            &format!(". Reach it with `ssh {name}` once Muxtra is on it.")
+        )
+    );
     if hash.is_some() {
         println!(
-            "  Password  set. Only a hash is stored, in {}, which git ignores.",
-            files::SECRETS_FILE
+            "  {} {}{}",
+            o.label("Password"),
+            o.paint(Role::Ok, "set"),
+            o.paint(
+                Role::Dim,
+                &format!(
+                    ". Only a hash is stored, in {}, which git ignores.",
+                    files::SECRETS_FILE
+                )
+            )
         );
     } else {
-        println!("  Password  none. Anyone at the Mac's keyboard can use it.");
+        println!(
+            "  {} {}{}",
+            o.label("Password"),
+            o.paint(Role::Warn, "none"),
+            o.paint(Role::Dim, ". Anyone at the Mac's keyboard can use it.")
+        );
     }
     println!(
-        "  Remote    {}",
+        "  {} {}",
+        o.label("Remote"),
         if remote.is_empty() {
-            "none".to_string()
+            o.paint(Role::Dim, "none")
         } else {
             remote.join(", ")
         }
     );
-    println!("  Base      Debian {}", manifest.base.debian);
+    println!(
+        "  {} {}",
+        o.label("Base"),
+        o.paint(Role::Value, &format!("Debian {}", manifest.base.debian))
+    );
     if hash.is_none() {
-        println!("\nTo set a password later, run `muxtra passwd` yourself.");
+        println!(
+            "\n{}",
+            o.rich(
+                Role::Dim,
+                "To set a password later, run `muxtra passwd` yourself."
+            )
+        );
     }
     if !interactive {
         println!(
-            "No one was at the keyboard, so Muxtra used defaults for anything not passed as a flag."
+            "{}",
+            o.paint(
+                Role::Dim,
+                "No one was at the keyboard, so Muxtra used defaults for anything not passed as a flag."
+            )
         );
     }
-    println!("\nNext: muxtra build");
+    println!(
+        "\n{} {} {}",
+        o.paint(Role::Accent, "Next"),
+        o.paint(Role::Dim, "→"),
+        o.paint(Role::Cmd, "muxtra build")
+    );
     Ok(())
 }

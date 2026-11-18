@@ -11,6 +11,8 @@ fn muxtra(dir: &Path, args: &[&str], stdin: Option<&str>) -> Output {
     let mut child = Command::new(env!("CARGO_BIN_EXE_muxtra"))
         .args(args)
         .current_dir(dir)
+        .env_remove("FORCE_COLOR")
+        .env_remove("NO_COLOR")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -283,4 +285,61 @@ fn missing_manifest_points_to_new() {
     let out = muxtra(tmp.path(), &["build"], None);
     assert!(!out.status.success());
     assert!(text(&out).contains("muxtra new"), "{}", text(&out));
+}
+
+#[test]
+fn agents_get_plain_text() {
+    let tmp = tempfile::tempdir().unwrap();
+    let out = muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None);
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(
+        !text(&out).contains('\x1b'),
+        "color codes leaked: {:?}",
+        text(&out)
+    );
+    assert!(text(&out).contains("Next → muxtra build"), "{}", text(&out));
+}
+
+#[test]
+fn people_get_colors_in_both_themes() {
+    for (theme, ice) in [("dark", "38;2;143;208;245"), ("light", "38;2;31;111;168")] {
+        let tmp = tempfile::tempdir().unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_muxtra"))
+            .args(["new", "--mac", "iMac14,4"])
+            .current_dir(tmp.path())
+            .env("FORCE_COLOR", "1")
+            .env("COLORTERM", "truecolor")
+            .env("MUXTRA_THEME", theme)
+            .env_remove("NO_COLOR")
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        let said = text(&out);
+        assert!(
+            said.contains(&format!("\x1b[{ice}miMac14,4")),
+            "{theme}: {said:?}"
+        );
+        // The command to type is bold, without its backticks.
+        assert!(said.contains("passwd\x1b[0m"), "{theme}: {said:?}");
+    }
+}
+
+#[test]
+fn manifest_problems_name_the_field() {
+    let tmp = tempfile::tempdir().unwrap();
+    assert!(
+        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
+            .status
+            .success()
+    );
+    let path = tmp.path().join("muxtra.toml");
+    let broken = fs::read_to_string(&path)
+        .unwrap()
+        .replace("\"agent-box\"", "\"Agent Box\"");
+    fs::write(&path, broken).unwrap();
+    let out = muxtra(tmp.path(), &["check"], None);
+    assert!(!out.status.success());
+    let said = text(&out);
+    assert!(said.contains("✗ muxtra.toml has 1 problem:"), "{said}");
+    assert!(said.contains("  system.name · "), "{said}");
 }

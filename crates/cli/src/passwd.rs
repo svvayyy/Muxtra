@@ -3,6 +3,7 @@
 //! The password never goes in muxtra.toml. Only a hash is kept, in
 //! muxtra.secrets next to it, and git is told to ignore that file.
 
+use crate::style::{self, Role};
 use crate::{Failure, files, prompt};
 use clap::Args;
 use std::fs;
@@ -44,8 +45,16 @@ pub fn run(args: PasswdArgs) -> Result<(), Failure> {
         }
         fs::write(&path, doc.to_string())?;
         files::write_secrets(dir, None)?;
-        println!("Removed the password. Anyone at the Mac's keyboard can use it.");
-        println!("It takes effect on the next `muxtra build`.");
+        let o = style::out();
+        println!(
+            "{} Removed the password. {}",
+            o.paint(Role::Ok, "✓"),
+            o.paint(Role::Warn, "Anyone at the Mac's keyboard can use it.")
+        );
+        println!(
+            "{}",
+            o.rich(Role::Dim, "It takes effect on the next `muxtra build`.")
+        );
         return Ok(());
     }
 
@@ -64,10 +73,21 @@ pub fn run(args: PasswdArgs) -> Result<(), Failure> {
     files::write_secrets(dir, Some(&hash))?;
     files::set_value(&mut doc, "user", "password", true.into(), None);
     fs::write(&path, doc.to_string())?;
+    let o = style::out();
     println!(
-        "Password set. Only a hash is stored, in {}, which git ignores.",
-        files::SECRETS_FILE
+        "{} Password set. {}",
+        o.paint(Role::Ok, "✓"),
+        o.paint(
+            Role::Dim,
+            &format!(
+                "Only a hash is stored, in {}, which git ignores.",
+                files::SECRETS_FILE
+            )
+        )
     );
-    println!("It takes effect on the next `muxtra build`.");
+    println!(
+        "{}",
+        o.rich(Role::Dim, "It takes effect on the next `muxtra build`.")
+    );
     Ok(())
 }

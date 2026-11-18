@@ -1,7 +1,8 @@
 //! Reading and writing muxtra.toml and muxtra.secrets.
 
 use crate::Failure;
-use muxtra_manifest::{FILE_NAME, Manifest};
+use crate::style::{self, Role};
+use muxtra_manifest::{Error, FILE_NAME, Manifest};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -28,7 +29,29 @@ pub fn load_manifest(path: &Path) -> Result<(PathBuf, Manifest), Failure> {
             path.display()
         ))
     })?;
-    let manifest = Manifest::parse(&text)?;
+    let manifest = Manifest::parse(&text).map_err(|e| match e {
+        Error::Syntax(message) => Failure(format!("{FILE_NAME} could not be read: {message}")),
+        Error::Invalid(problems) => {
+            let e = style::err();
+            let count = problems.len();
+            let noun = if count == 1 { "problem" } else { "problems" };
+            eprintln!(
+                "{} {} has {}:",
+                e.paint(Role::Err, "✗"),
+                e.paint(Role::Cmd, FILE_NAME),
+                e.paint(Role::Cmd, &format!("{count} {noun}"))
+            );
+            for problem in problems {
+                eprintln!(
+                    "  {} {} {}",
+                    e.paint(Role::Value, &problem.field),
+                    e.paint(Role::Dim, "·"),
+                    e.rich(Role::Plain, &problem.message)
+                );
+            }
+            Failure(String::new())
+        }
+    })?;
     Ok((path, manifest))
 }
 
