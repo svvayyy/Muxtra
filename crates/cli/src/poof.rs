@@ -504,8 +504,16 @@ fn copy_data(
 #[cfg(unix)]
 fn next_data(file: &fs::File, pos: u64, end: u64) -> (u64, u64) {
     use std::os::fd::AsRawFd;
+    // The numbers differ by platform: Linux has DATA 3 and HOLE 4, Apple
+    // has them the other way around.
+    #[cfg(target_vendor = "apple")]
     const SEEK_HOLE: libc::c_int = 3;
+    #[cfg(target_vendor = "apple")]
     const SEEK_DATA: libc::c_int = 4;
+    #[cfg(not(target_vendor = "apple"))]
+    const SEEK_DATA: libc::c_int = 3;
+    #[cfg(not(target_vendor = "apple"))]
+    const SEEK_HOLE: libc::c_int = 4;
     let fd = file.as_raw_fd();
     // SAFETY: lseek on a file we own. It only moves the file offset, which
     // copy_data sets again before every read.

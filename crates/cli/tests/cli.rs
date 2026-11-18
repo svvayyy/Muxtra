@@ -499,9 +499,14 @@ fn poof_write_fits_the_image_onto_a_smaller_drive() {
         .unwrap();
     assert!(out.status.success(), "{}", text(&out));
 
-    let written = fs::read(&drive).unwrap();
-    let head = &written[..34 * SECTOR as usize];
-    let got = disk::read_gpt(head).unwrap();
+    let mut written = fs::File::open(&drive).unwrap();
+    let mut read_at = |offset: u64, len: usize| {
+        let mut buf = vec![0u8; len];
+        written.seek(SeekFrom::Start(offset)).unwrap();
+        std::io::Read::read_exact(&mut written, &mut buf).unwrap();
+        buf
+    };
+    let got = disk::read_gpt(&read_at(0, 34 * SECTOR as usize)).unwrap();
     let names: Vec<&str> = got.iter().map(|p| p.name.as_str()).collect();
     assert_eq!(names, ["muxtra-efi", "muxtra-root-a", "muxtra-home"]);
     for (name, mark) in [
@@ -510,16 +515,15 @@ fn poof_write_fits_the_image_onto_a_smaller_drive() {
         ("muxtra-home", b"HOMEMARK"),
     ] {
         let p = got.iter().find(|p| p.name == name).unwrap();
-        let at = (p.offset() + 4096) as usize;
         assert_eq!(
-            &written[at..at + 8],
+            &read_at(p.offset() + 4096, 8),
             mark,
             "{name} data is not where its partition starts"
         );
     }
     // Backup partition table at the very end.
-    let tail = &written[written.len() - SECTOR as usize..];
-    assert_eq!(&tail[0..8], b"EFI PART");
+    let last_sector = (size / SECTOR - 1) * SECTOR;
+    assert_eq!(&read_at(last_sector, 8), b"EFI PART");
     // Only real data was copied, not 10 GB of zeros.
     assert!(text(&out).contains("Wrote 0.0 GB"), "{}", text(&out));
 }
