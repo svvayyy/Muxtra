@@ -110,6 +110,33 @@ fn rgb(theme: Theme, role: Role) -> (u8, u8, u8) {
     }
 }
 
+static PROGRESS_TO_STDERR: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// Sends progress messages to stderr, so stdout carries only the result
+/// (used by `--json`).
+pub fn send_progress_to_stderr() {
+    PROGRESS_TO_STDERR.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
+fn progress_on_stderr() -> bool {
+    PROGRESS_TO_STDERR.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Painter for progress messages.
+pub fn progress() -> &'static Painter {
+    if progress_on_stderr() { err() } else { out() }
+}
+
+/// Prints one progress line where progress goes.
+pub fn say(line: &str) {
+    if progress_on_stderr() {
+        eprintln!("{line}");
+    } else {
+        println!("{line}");
+    }
+}
+
 /// Painter for standard output.
 pub fn out() -> &'static Painter {
     static OUT: OnceLock<Painter> = OnceLock::new();

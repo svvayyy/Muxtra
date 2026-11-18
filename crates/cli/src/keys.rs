@@ -48,36 +48,57 @@ fn read_keys(path: &Path) -> Result<Vec<String>, Failure> {
     Ok(keys)
 }
 
+/// Public keys to install, and the private key files that go with them
+/// (for `muxtra check` to sign in with).
+#[derive(Debug, Default)]
+pub struct Resolved {
+    pub public: Vec<String>,
+    pub identities: Vec<PathBuf>,
+}
+
 /// Resolves every entry, without duplicates.
-pub fn resolve(entries: &[String]) -> Result<Vec<String>, Failure> {
-    let mut keys: Vec<String> = Vec::new();
+pub fn resolve(entries: &[String]) -> Result<Resolved, Failure> {
+    let mut out = Resolved::default();
     for entry in entries {
-        let found = if entry == "auto" {
+        let (found, pub_file) = if entry == "auto" {
             auto_key()?
         } else if looks_like_key(entry) {
-            vec![entry.clone()]
+            (vec![entry.clone()], None)
         } else {
-            read_keys(&expand(entry))?
+            let path = expand(entry);
+            (read_keys(&path)?, Some(path))
         };
         for key in found {
-            if !keys.contains(&key) {
-                keys.push(key);
+            if !out.public.contains(&key) {
+                out.public.push(key);
             }
         }
+        if let Some(private) = pub_file.and_then(|p| private_for(&p))
+            && !out.identities.contains(&private)
+        {
+            out.identities.push(private);
+        }
     }
-    Ok(keys)
+    Ok(out)
+}
+
+/// `~/.ssh/id_ed25519.pub` goes with `~/.ssh/id_ed25519`, if it exists.
+fn private_for(public: &Path) -> Option<PathBuf> {
+    let name = public.file_name()?.to_str()?.strip_suffix(".pub")?;
+    let private = public.with_file_name(name);
+    private.is_file().then_some(private)
 }
 
 /// Your usual SSH key, or a new one in the standard place if you have none,
 /// so plain `ssh` works with no extra setup.
-fn auto_key() -> Result<Vec<String>, Failure> {
+fn auto_key() -> Result<(Vec<String>, Option<PathBuf>), Failure> {
     let dir = home().join(".ssh");
     if let Some(found) = DEFAULT_KEYS
         .iter()
         .map(|k| dir.join(k))
         .find(|p| p.is_file())
     {
-        return read_keys(&found);
+        return Ok((read_keys(&found)?, Some(found)));
     }
     fs::create_dir_all(&dir)?;
     #[cfg(unix)]
@@ -107,5 +128,6 @@ fn auto_key() -> Result<Vec<String>, Failure> {
             )
         )
     );
-    read_keys(&dir.join("id_ed25519.pub"))
+    let public = dir.join("id_ed25519.pub");
+    Ok((read_keys(&public)?, Some(public)))
 }

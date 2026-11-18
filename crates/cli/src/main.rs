@@ -5,6 +5,7 @@
 //! waits: it uses the defaults and prints what it chose.
 
 mod build;
+mod check;
 mod files;
 mod host;
 mod keys;
@@ -37,7 +38,7 @@ enum Command {
     /// Build a system image from muxtra.toml
     Build(build::BuildArgs),
     /// Boot the image in a virtual machine and report what works
-    Check(ManifestArgs),
+    Check(check::CheckArgs),
     /// Put Muxtra on a Mac, over a USB stick or a cable
     #[command(alias = "flash")]
     Poof(ManifestArgs),
@@ -69,9 +70,7 @@ fn main() -> ExitCode {
         Command::New(args) => new::run(args),
         Command::Passwd(args) => passwd::run(args),
         Command::Build(args) => build::run(args),
-        Command::Check(args) => {
-            not_yet(&args, "Checking in a virtual machine", "coming in Phase 1")
-        }
+        Command::Check(args) => check::run(args),
         Command::Poof(args) => not_yet(&args, "Putting Muxtra on a Mac", "coming in Phase 2"),
     };
     match result {

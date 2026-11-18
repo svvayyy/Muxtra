@@ -258,7 +258,7 @@ fn unfinished_commands_still_check_the_manifest() {
             .status
             .success()
     );
-    for command in ["check", "poof", "flash"] {
+    for command in ["poof", "flash"] {
         let out = muxtra(tmp.path(), &[command], None);
         let said = text(&out);
         assert!(

@@ -46,6 +46,8 @@ impl Arch {
 pub struct Qemu {
     /// qemu-system-aarch64 or qemu-system-x86_64, matching the host.
     pub system: PathBuf,
+    /// qemu-system-x86_64, for booting the finished Intel Mac image.
+    pub x86: PathBuf,
     pub img: PathBuf,
     /// Where QEMU keeps its firmware files.
     pub share: PathBuf,
@@ -66,12 +68,18 @@ fn find_program(name: &str) -> Option<PathBuf> {
 
 fn find_qemu(arch: Arch) -> Option<Qemu> {
     let system = find_program(arch.qemu_system())?;
+    let x86 = find_program(Arch::Amd64.qemu_system())?;
     let img = find_program("qemu-img")?;
     let bin = system.parent()?;
     let share = [bin.join("../share/qemu"), PathBuf::from("/usr/share/qemu")]
         .into_iter()
         .find(|p| p.is_dir())?;
-    Some(Qemu { system, img, share })
+    Some(Qemu {
+        system,
+        x86,
+        img,
+        share,
+    })
 }
 
 /// Finds QEMU, or offers to install it with Homebrew.
@@ -295,6 +303,47 @@ pub fn make_seed_iso(dir: &Path, iso: &Path) -> Result<(), Failure> {
         Err(Failure(
             "Could not make the builder's setup disc.".to_string(),
         ))
+    }
+}
+
+/// UEFI firmware for an Intel PC: (code, a template for its settings).
+pub fn x86_firmware(qemu: &Qemu) -> Result<(PathBuf, PathBuf), Failure> {
+    let pairs: [(PathBuf, PathBuf); 4] = [
+        (
+            qemu.share.join("edk2-x86_64-code.fd"),
+            qemu.share.join("edk2-i386-vars.fd"),
+        ),
+        (
+            "/usr/share/OVMF/OVMF_CODE_4M.fd".into(),
+            "/usr/share/OVMF/OVMF_VARS_4M.fd".into(),
+        ),
+        (
+            "/usr/share/OVMF/OVMF_CODE.fd".into(),
+            "/usr/share/OVMF/OVMF_VARS.fd".into(),
+        ),
+        (
+            "/usr/share/edk2/x64/OVMF_CODE.4m.fd".into(),
+            "/usr/share/edk2/x64/OVMF_VARS.4m.fd".into(),
+        ),
+    ];
+    pairs
+        .into_iter()
+        .find(|(code, vars)| code.is_file() && vars.is_file())
+        .ok_or_else(|| {
+            Failure(
+                "Could not find UEFI firmware for the test VM. On Linux, install the ovmf package."
+                    .to_string(),
+            )
+        })
+}
+
+/// How to run an Intel (x86-64) VM here: hardware speed on Intel hosts,
+/// emulation on Apple Silicon.
+pub fn x86_accelerator() -> &'static str {
+    if Arch::host() == Arch::Amd64 {
+        accelerator()
+    } else {
+        "tcg"
     }
 }
 
