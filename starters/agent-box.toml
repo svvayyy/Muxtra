@@ -1,0 +1,24 @@
+# Muxtra manifest: this one file describes the whole system.
+# Starter: agent-box. A headless Mac you and your agents reach over SSH.
+# Run `muxtra check` after any change to see what works.
+
+[system]
+name = "agent-box"         # find it with `ssh agent-box` or agent-box.local
+mac  = "iMac14,4"          # Mac model, from `sysctl -n hw.model` on that Mac
+
+[base]
+debian = "trixie"          # Debian 13. Change this to upgrade Debian on purpose.
+
+[user]
+name     = "me"
+password = false           # `muxtra passwd` sets one. It never goes in this file.
+ssh_keys = ["auto"]        # "auto" finds your SSH key, or makes one
+
+[modules]
+network = ["ethernet", "wifi", "thunderbolt"]   # thunderbolt: a rescue cable to another Mac
+remote  = ["ssh", "mosh", "tailscale"]          # ssh includes SFTP
+tools   = ["git", "node"]
+
+[boot]
+start  = ["sshd", "tailscaled"]    # background services started at boot
+locked = ["bootloader", "kernel"]  # agents cannot change these until you unlock them

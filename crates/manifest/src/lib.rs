@@ -519,6 +519,18 @@ locked = ["bootloader", "kernel"]
     }
 
     #[test]
+    fn starters_are_valid() {
+        for (name, text) in [
+            ("agent-box", include_str!("../../../starters/agent-box.toml")),
+            ("blank", include_str!("../../../starters/blank.toml")),
+        ] {
+            if let Err(e) = Manifest::parse(text) {
+                panic!("starter {name} is invalid: {e}");
+            }
+        }
+    }
+
+    #[test]
     fn mac_models() {
         for good in [
             "iMac14,4",
