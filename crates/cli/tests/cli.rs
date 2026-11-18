@@ -251,35 +251,6 @@ fn passwd_sets_then_removes() {
 }
 
 #[test]
-fn unfinished_commands_still_check_the_manifest() {
-    let tmp = tempfile::tempdir().unwrap();
-    assert!(
-        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
-            .status
-            .success()
-    );
-    for command in ["poof", "flash"] {
-        let out = muxtra(tmp.path(), &[command], None);
-        let said = text(&out);
-        assert!(
-            !out.status.success(),
-            "{command} should say it is not ready"
-        );
-        assert!(said.contains("looks good"), "{command}: {said}");
-        assert!(said.contains("not ready yet"), "{command}: {said}");
-    }
-    fs::write(
-        tmp.path().join("muxtra.toml"),
-        fs::read_to_string(tmp.path().join("muxtra.toml"))
-            .unwrap()
-            .replace("\"iMac14,4\"", "\"iMac 2014\""),
-    )
-    .unwrap();
-    let broken = muxtra(tmp.path(), &["check"], None);
-    assert!(text(&broken).contains("system.mac"), "{}", text(&broken));
-}
-
-#[test]
 fn missing_manifest_points_to_new() {
     let tmp = tempfile::tempdir().unwrap();
     let out = muxtra(tmp.path(), &["build"], None);
@@ -438,4 +409,117 @@ fn build_needs_the_password_hash_it_was_promised() {
     let out = muxtra_with_home(tmp.path(), home.path(), &["build", "--print-config"]);
     assert!(!out.status.success());
     assert!(text(&out).contains("muxtra passwd"), "{}", text(&out));
+}
+
+#[test]
+fn poof_asks_agents_to_name_the_drive() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    assert!(
+        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
+            .status
+            .success()
+    );
+    for command in ["poof", "flash"] {
+        let out = muxtra_with_home(tmp.path(), home.path(), &[command]);
+        assert!(!out.status.success());
+        let said = text(&out);
+        assert!(
+            said.contains("--disk") && said.contains("--yes"),
+            "{command}: {said}"
+        );
+        // Nothing was built while finding that out.
+        assert!(!tmp.path().join("build").exists());
+    }
+    let out = muxtra_with_home(
+        tmp.path(),
+        home.path(),
+        &["poof", "--disk", "disk0", "--yes"],
+    );
+    assert!(!out.status.success());
+    assert!(
+        text(&out).contains("never to the disk it runs from"),
+        "{}",
+        text(&out)
+    );
+}
+
+#[test]
+fn poof_write_fits_the_image_onto_a_smaller_drive() {
+    use muxtra_build::disk::{self, Part, SECTOR};
+    use std::io::{Seek, SeekFrom};
+    const GIB: u64 = 1024 * 1024 * 1024;
+    let tmp = tempfile::tempdir().unwrap();
+
+    // A sparse 10 GiB image laid out like builder.sh makes it, with a
+    // marker at the start of each partition.
+    let part = |name: &str, t: &str, first: u64, bytes: u64| Part {
+        name: name.into(),
+        type_guid: disk::guid(t),
+        first,
+        last: first + bytes / SECTOR - 1,
+    };
+    let esp = part("muxtra-efi", disk::ESP_TYPE, 2048, 512 << 20);
+    let a = part(
+        "muxtra-root-a",
+        disk::ROOT_X86_64_TYPE,
+        esp.last + 1,
+        4 * GIB,
+    );
+    let b = part("muxtra-root-b", disk::ROOT_X86_64_TYPE, a.last + 1, 4 * GIB);
+    let home_bytes = (10 * GIB - (1 << 20)) - (b.last + 1) * SECTOR;
+    let home = part("muxtra-home", disk::HOME_TYPE, b.last + 1, home_bytes);
+    let parts = vec![esp.clone(), a.clone(), b, home.clone()];
+    let image_path = tmp.path().join("image.img");
+    let mut image = fs::File::create(&image_path).unwrap();
+    image.set_len(10 * GIB).unwrap();
+    let mut n = 0u8;
+    let t = disk::tables(&parts, 10 * GIB / SECTOR, || {
+        n += 1;
+        [n; 16]
+    });
+    image.write_all(&t.head).unwrap();
+    for (p, mark) in [(&esp, b"ESP-MARK"), (&a, b"ROOTMARK"), (&home, b"HOMEMARK")] {
+        image.seek(SeekFrom::Start(p.offset() + 4096)).unwrap();
+        image.write_all(mark).unwrap();
+    }
+    drop(image);
+
+    // An "8 GB" drive, as a file.
+    let size = 7_800_000_000u64;
+    let drive = tmp.path().join("drive.img");
+    fs::File::create(&drive).unwrap().set_len(size).unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_muxtra"))
+        .args(["poof-write", "--image"])
+        .arg(&image_path)
+        .arg("--device")
+        .arg(&drive)
+        .args(["--size", &size.to_string()])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+
+    let written = fs::read(&drive).unwrap();
+    let head = &written[..34 * SECTOR as usize];
+    let got = disk::read_gpt(head).unwrap();
+    let names: Vec<&str> = got.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(names, ["muxtra-efi", "muxtra-root-a", "muxtra-home"]);
+    for (name, mark) in [
+        ("muxtra-efi", b"ESP-MARK"),
+        ("muxtra-root-a", b"ROOTMARK"),
+        ("muxtra-home", b"HOMEMARK"),
+    ] {
+        let p = got.iter().find(|p| p.name == name).unwrap();
+        let at = (p.offset() + 4096) as usize;
+        assert_eq!(
+            &written[at..at + 8],
+            mark,
+            "{name} data is not where its partition starts"
+        );
+    }
+    // Backup partition table at the very end.
+    let tail = &written[written.len() - SECTOR as usize..];
+    assert_eq!(&tail[0..8], b"EFI PART");
+    // Only real data was copied, not 10 GB of zeros.
+    assert!(text(&out).contains("Wrote 0.0 GB"), "{}", text(&out));
 }

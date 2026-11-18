@@ -11,6 +11,7 @@ mod host;
 mod keys;
 mod new;
 mod passwd;
+mod poof;
 mod prompt;
 mod style;
 
@@ -41,7 +42,10 @@ enum Command {
     Check(check::CheckArgs),
     /// Put Muxtra on a Mac, over a USB stick or a cable
     #[command(alias = "flash")]
-    Poof(ManifestArgs),
+    Poof(poof::PoofArgs),
+    /// The admin step of poof that writes the drive
+    #[command(name = "poof-write", hide = true)]
+    PoofWrite(poof::PoofWriteArgs),
     /// Set or remove the password for the Mac's own keyboard
     Passwd(passwd::PasswdArgs),
 }
@@ -71,7 +75,8 @@ fn main() -> ExitCode {
         Command::Passwd(args) => passwd::run(args),
         Command::Build(args) => build::run(args),
         Command::Check(args) => check::run(args),
-        Command::Poof(args) => not_yet(&args, "Putting Muxtra on a Mac", "coming in Phase 2"),
+        Command::Poof(args) => poof::run(args),
+        Command::PoofWrite(args) => poof::write(args),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -88,28 +93,4 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
-}
-
-/// Commands that exist but are not built yet still read and check the
-/// manifest, so they are useful today.
-fn not_yet(args: &ManifestArgs, what: &str, when: &str) -> Result<(), Failure> {
-    let (path, manifest) = files::load_manifest(&args.manifest)?;
-    let o = style::out();
-    println!(
-        "{} {} looks good: {} for {}.",
-        o.paint(Role::Ok, "✓"),
-        o.paint(Role::Cmd, &path.display().to_string()),
-        o.paint(Role::Value, &manifest.system.name),
-        o.paint(Role::Value, &manifest.system.mac)
-    );
-    let e = style::err();
-    eprintln!(
-        "{} {}",
-        e.paint(Role::Warn, "!"),
-        e.paint(
-            Role::Warn,
-            &format!("{what} is not ready yet. It is {when}.")
-        )
-    );
-    Err(Failure(String::new()))
 }
