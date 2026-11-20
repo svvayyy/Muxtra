@@ -1,7 +1,7 @@
 //! `muxtra new`: write a muxtra.toml from a starter.
 
 use crate::style::{self, Role};
-use crate::{Failure, files, prompt};
+use crate::{Failure, files, prompt, wifi};
 use clap::{Args, ValueEnum};
 use muxtra_manifest::{FILE_NAME, Manifest, Remote, check_host_name, is_mac_model};
 use std::fs;
@@ -61,8 +61,17 @@ pub struct NewArgs {
     #[arg(long, conflicts_with = "password_stdin")]
     no_password: bool,
     /// Read a password from piped input instead of asking
-    #[arg(long)]
+    #[arg(long, conflicts_with = "wifi_password_stdin")]
     password_stdin: bool,
+    /// Wi-Fi network for the Mac to join
+    #[arg(long, conflicts_with = "no_wifi")]
+    wifi_ssid: Option<String>,
+    /// Read the Wi-Fi password from piped input (with --wifi-ssid)
+    #[arg(long, requires = "wifi_ssid")]
+    wifi_password_stdin: bool,
+    /// Do not set up Wi-Fi now
+    #[arg(long)]
+    no_wifi: bool,
     /// Accept every default without asking
     #[arg(long, short = 'y')]
     yes: bool,
@@ -113,7 +122,8 @@ fn this_mac() -> Option<ThisMac> {
 }
 
 pub fn run(args: NewArgs) -> Result<(), Failure> {
-    let interactive = prompt::someone_is_here() && !args.yes && !args.password_stdin;
+    let interactive =
+        prompt::someone_is_here() && !args.yes && !args.password_stdin && !args.wifi_password_stdin;
     let starter = args.starter;
     let path = args.dir.join(FILE_NAME);
     if path.exists() && !args.force {
@@ -205,11 +215,42 @@ pub fn run(args: NewArgs) -> Result<(), Failure> {
     let text = doc.to_string();
     let manifest = Manifest::parse(&text)?;
 
+    // Wi-Fi, when this Mac will use it.
+    let uses_wifi = manifest
+        .modules
+        .network
+        .contains(&muxtra_manifest::Network::Wifi);
+    let network = if !uses_wifi || args.no_wifi {
+        None
+    } else if let Some(ssid) = &args.wifi_ssid {
+        let password = if args.wifi_password_stdin {
+            prompt::password_from_stdin()?
+        } else if interactive {
+            wifi::password_for(ssid)?
+        } else {
+            return Err(Failure(
+                "Pipe the Wi-Fi password in with --wifi-password-stdin, or run `muxtra wifi add` yourself later.".to_string(),
+            ));
+        };
+        Some(muxtra_build::wifi::Network {
+            psk: muxtra_build::wifi::psk(ssid, &password)?,
+            ssid: ssid.clone(),
+        })
+    } else if interactive {
+        wifi::ask_network()?
+    } else {
+        None
+    };
+
     fs::create_dir_all(&args.dir)?;
     fs::write(&path, &text)?;
-    if let Some(hash) = &hash {
-        files::write_secrets(&args.dir, Some(hash))?;
-    }
+    files::save_secrets(
+        &args.dir,
+        &files::Secrets {
+            password_hash: hash.clone(),
+            wifi: network.iter().cloned().collect(),
+        },
+    )?;
 
     // Say what happened, in plain English.
     let this = if here.as_ref().is_some_and(|m| m.model == mac) {
@@ -272,6 +313,25 @@ pub fn run(args: NewArgs) -> Result<(), Failure> {
             o.paint(Role::Warn, "none"),
             o.paint(Role::Dim, ". Anyone at the Mac's keyboard can use it.")
         );
+    }
+    if uses_wifi {
+        match &network {
+            Some(n) => println!(
+                "  {} {}{}",
+                o.label("Wi-Fi"),
+                o.paint(Role::Value, &n.ssid),
+                o.paint(
+                    Role::Dim,
+                    ". Only a scrambled key is stored, never the password."
+                )
+            ),
+            None => println!(
+                "  {} {}{}",
+                o.label("Wi-Fi"),
+                o.paint(Role::Warn, "none yet"),
+                o.rich(Role::Dim, ". Add a network with `muxtra wifi add`.")
+            ),
+        }
     }
     println!(
         "  {} {}",

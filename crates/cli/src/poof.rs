@@ -124,6 +124,34 @@ pub fn run(args: PoofArgs) -> Result<(), Failure> {
         }
     }
 
+    // Without Wi-Fi, a Mac with only USB-C ports is hard to reach, so
+    // offer the network this Mac uses before building.
+    let uses_wifi = p
+        .manifest
+        .modules
+        .network
+        .contains(&muxtra_manifest::Network::Wifi);
+    let p = if uses_wifi && crate::files::read_secrets(&p.dir)?.wifi.is_empty() {
+        if interactive && !args.yes {
+            match crate::wifi::ask_network()? {
+                Some(network) => {
+                    let mut secrets = crate::files::read_secrets(&p.dir)?;
+                    crate::wifi::save(&mut secrets, network);
+                    crate::files::save_secrets(&p.dir, &secrets)?;
+                    build::prepare(&args.manifest.manifest)?
+                }
+                None => p,
+            }
+        } else {
+            say(&o.rich(
+                Role::Warn,
+                "No Wi-Fi network is saved, so this Mac can only be reached by cable. Run `muxtra wifi add` first to fix that.",
+            ));
+            p
+        }
+    } else {
+        p
+    };
     if let Some(why) = p.needs_build() {
         say(&o.paint(Role::Dim, why));
         build::build_image(&p, args.yes)?;

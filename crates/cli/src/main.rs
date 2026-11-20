@@ -14,6 +14,7 @@ mod passwd;
 mod poof;
 mod prompt;
 mod style;
+mod wifi;
 
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
@@ -48,6 +49,8 @@ enum Command {
     PoofWrite(poof::PoofWriteArgs),
     /// Set or remove the password for the Mac's own keyboard
     Passwd(passwd::PasswdArgs),
+    /// Save, list or forget Wi-Fi networks for the Mac
+    Wifi(wifi::WifiArgs),
 }
 
 /// Where to find muxtra.toml.
@@ -73,6 +76,7 @@ fn main() -> ExitCode {
     let result = match cli.command {
         Command::New(args) => new::run(args),
         Command::Passwd(args) => passwd::run(args),
+        Command::Wifi(args) => wifi::run(args),
         Command::Build(args) => build::run(args),
         Command::Check(args) => check::run(args),
         Command::Poof(args) => poof::run(args),

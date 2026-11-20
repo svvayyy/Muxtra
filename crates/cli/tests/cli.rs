@@ -527,3 +527,153 @@ fn poof_write_fits_the_image_onto_a_smaller_drive() {
     // Only real data was copied, not 10 GB of zeros.
     assert!(text(&out).contains("Wrote 0.0 GB"), "{}", text(&out));
 }
+
+fn secrets_text(dir: &Path) -> String {
+    fs::read_to_string(dir.join("muxtra.secrets")).unwrap_or_default()
+}
+
+#[test]
+fn new_saves_wifi_as_a_key_not_a_password() {
+    let tmp = tempfile::tempdir().unwrap();
+    let out = muxtra(
+        tmp.path(),
+        &[
+            "new",
+            "--mac",
+            "iMac14,4",
+            "--wifi-ssid",
+            "IEEE",
+            "--wifi-password-stdin",
+        ],
+        Some("password\n"),
+    );
+    assert!(out.status.success(), "{}", text(&out));
+    let secrets = secrets_text(tmp.path());
+    assert!(secrets.contains("ssid = \"IEEE\""), "{secrets}");
+    // The IEEE 802.11i test key for passphrase "password" on "IEEE".
+    assert!(
+        secrets
+            .contains("psk = \"f42c6fc52df0ebef9ebb4b90b38a5f902e83fe1b135a70e23aed762e9710a12e\""),
+        "{secrets}"
+    );
+    assert!(
+        !secrets.contains("= \"password\""),
+        "plain password stored: {secrets}"
+    );
+    assert!(text(&out).contains("Wi-Fi     IEEE"), "{}", text(&out));
+    let ignore = fs::read_to_string(tmp.path().join(".gitignore")).unwrap();
+    assert!(ignore.lines().any(|l| l == "muxtra.secrets"));
+}
+
+#[test]
+fn new_without_wifi_says_how_to_add_it() {
+    let tmp = tempfile::tempdir().unwrap();
+    let out = muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None);
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(text(&out).contains("muxtra wifi add"), "{}", text(&out));
+    assert!(!tmp.path().join("muxtra.secrets").exists());
+}
+
+#[test]
+fn wifi_add_list_remove_and_passwd_keep_each_other() {
+    let tmp = tempfile::tempdir().unwrap();
+    assert!(
+        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
+            .status
+            .success()
+    );
+    let add = muxtra(
+        tmp.path(),
+        &["wifi", "add", "Home Net", "--password-stdin"],
+        Some("correcthorse\n"),
+    );
+    assert!(add.status.success(), "{}", text(&add));
+    let add2 = muxtra(
+        tmp.path(),
+        &["wifi", "add", "Café", "--password-stdin"],
+        Some("anotherpass1\n"),
+    );
+    assert!(add2.status.success(), "{}", text(&add2));
+    let list = muxtra(tmp.path(), &["wifi", "list"], None);
+    assert_eq!(
+        String::from_utf8_lossy(&list.stdout)
+            .lines()
+            .collect::<Vec<_>>(),
+        ["Home Net", "Café"]
+    );
+
+    // Setting a password must not erase the Wi-Fi networks, and back.
+    assert!(
+        muxtra(
+            tmp.path(),
+            &["passwd", "--password-stdin"],
+            Some("hunter22\n")
+        )
+        .status
+        .success()
+    );
+    let secrets = secrets_text(tmp.path());
+    assert!(
+        secrets.contains("password_hash")
+            && secrets.contains("Home Net")
+            && secrets.contains("Café"),
+        "{secrets}"
+    );
+    assert!(
+        !secrets.contains("correcthorse") && !secrets.contains("hunter22"),
+        "{secrets}"
+    );
+
+    let rm = muxtra(tmp.path(), &["wifi", "remove", "Home Net"], None);
+    assert!(rm.status.success(), "{}", text(&rm));
+    let secrets = secrets_text(tmp.path());
+    assert!(
+        !secrets.contains("Home Net")
+            && secrets.contains("Café")
+            && secrets.contains("password_hash"),
+        "{secrets}"
+    );
+    let missing = muxtra(tmp.path(), &["wifi", "remove", "Nope"], None);
+    assert!(!missing.status.success());
+
+    // Without a keyboard or a pipe, wifi add explains itself.
+    let lonely = muxtra(tmp.path(), &["wifi", "add"], None);
+    assert!(!lonely.status.success());
+    assert!(
+        text(&lonely).contains("--password-stdin"),
+        "{}",
+        text(&lonely)
+    );
+}
+
+#[test]
+fn build_config_carries_the_wifi_networks() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    assert!(
+        muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None)
+            .status
+            .success()
+    );
+    assert!(
+        muxtra(
+            tmp.path(),
+            &["wifi", "add", "Café", "--password-stdin"],
+            Some("anotherpass1\n")
+        )
+        .status
+        .success()
+    );
+    let out = muxtra_with_home(tmp.path(), home.path(), &["build", "--print-config"]);
+    assert!(out.status.success(), "{}", text(&out));
+    let config = String::from_utf8_lossy(&out.stdout);
+    assert!(config.contains("WITH_WIFI='1'"), "{config}");
+    assert!(
+        config.contains("WIFI_FILES=('=436166c3a9.psk')"),
+        "{config}"
+    );
+    assert!(
+        config.contains("WIFI_CONFIGS=('[Security]\nPreSharedKey="),
+        "{config}"
+    );
+}
