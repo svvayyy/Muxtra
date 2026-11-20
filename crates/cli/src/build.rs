@@ -102,8 +102,9 @@ pub fn prepare(manifest: &Path) -> Result<Prepared, Failure> {
     } else {
         keys::Resolved::default()
     };
+    let secrets = files::read_secrets(&dir)?;
     let password_hash = if manifest.user.password {
-        files::read_password_hash(&dir)?
+        secrets.password_hash.clone()
     } else {
         None
     };
@@ -112,7 +113,7 @@ pub fn prepare(manifest: &Path) -> Result<Prepared, Failure> {
         &muxtra_build::Inputs {
             ssh_keys: keys.public,
             password_hash,
-            wifi: Vec::new(),
+            wifi: secrets.wifi,
         },
     )?;
     Ok(Prepared {

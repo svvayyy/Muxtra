@@ -55,19 +55,81 @@ pub fn load_manifest(path: &Path) -> Result<(PathBuf, Manifest), Failure> {
     Ok((path, manifest))
 }
 
-/// The password hash from muxtra.secrets next to the manifest, if any.
-pub fn read_password_hash(dir: &Path) -> Result<Option<String>, Failure> {
+/// Everything kept in muxtra.secrets: never plain passwords, only a
+/// password hash and the derived keys for saved Wi-Fi networks.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Secrets {
+    pub password_hash: Option<String>,
+    pub wifi: Vec<muxtra_build::wifi::Network>,
+}
+
+impl Secrets {
+    fn is_empty(&self) -> bool {
+        self.password_hash.is_none() && self.wifi.is_empty()
+    }
+}
+
+/// Reads muxtra.secrets next to the manifest. A missing file is empty.
+pub fn read_secrets(dir: &Path) -> Result<Secrets, Failure> {
     let path = dir.join(SECRETS_FILE);
     let Ok(text) = fs::read_to_string(&path) else {
-        return Ok(None);
+        return Ok(Secrets::default());
     };
     let doc: toml_edit::DocumentMut = text
         .parse()
         .map_err(|e| Failure(format!("{SECRETS_FILE} could not be read: {e}")))?;
-    Ok(doc
+    let password_hash = doc
         .get("password_hash")
         .and_then(|v| v.as_str())
-        .map(str::to_string))
+        .map(str::to_string);
+    let mut wifi = Vec::new();
+    if let Some(tables) = doc.get("wifi").and_then(|i| i.as_array_of_tables()) {
+        for t in tables.iter() {
+            let (Some(ssid), Some(psk)) = (
+                t.get("ssid").and_then(|v| v.as_str()),
+                t.get("psk").and_then(|v| v.as_str()),
+            ) else {
+                continue;
+            };
+            wifi.push(muxtra_build::wifi::Network {
+                ssid: ssid.to_string(),
+                psk: psk.to_string(),
+            });
+        }
+    }
+    Ok(Secrets {
+        password_hash,
+        wifi,
+    })
+}
+
+/// Saves muxtra.secrets (readable only by you, ignored by git), or removes
+/// it when there is nothing left to keep.
+pub fn save_secrets(dir: &Path, secrets: &Secrets) -> Result<(), Failure> {
+    let path = dir.join(SECRETS_FILE);
+    if secrets.is_empty() {
+        if path.exists() {
+            fs::remove_file(&path)?;
+        }
+        return Ok(());
+    }
+    let quoted = |v: &str| toml_edit::Value::from(v).to_string();
+    let mut text = String::from(
+        "# Created by Muxtra. Keep this file private. Git ignores it.\n\
+         # Only a password hash and scrambled Wi-Fi keys live here, never your passwords themselves.\n",
+    );
+    if let Some(hash) = &secrets.password_hash {
+        text.push_str(&format!("password_hash = {}\n", quoted(hash)));
+    }
+    for n in &secrets.wifi {
+        text.push_str(&format!(
+            "\n[[wifi]]\nssid = {}\npsk = {}\n",
+            quoted(&n.ssid),
+            quoted(&n.psk)
+        ));
+    }
+    write_private(&path, &text)?;
+    ensure_gitignored(dir, SECRETS_FILE)
 }
 
 /// Hashes a password for /etc/shadow (SHA-512 crypt, `$6$`).
@@ -79,25 +141,11 @@ pub fn hash_password(password: &str) -> Result<String, Failure> {
     Ok(hash.as_str().to_string())
 }
 
-/// Writes (or replaces) the password hash, readable only by you, and makes
-/// sure git ignores the file.
+/// Sets or removes the password hash, keeping any saved Wi-Fi networks.
 pub fn write_secrets(dir: &Path, password_hash: Option<&str>) -> Result<(), Failure> {
-    let path = dir.join(SECRETS_FILE);
-    match password_hash {
-        Some(hash) => {
-            let text = format!(
-                "# Created by Muxtra. Keep this file private. Git ignores it.\n# Only a hash of the password is stored, never the password itself.\npassword_hash = \"{hash}\"\n"
-            );
-            write_private(&path, &text)?;
-            ensure_gitignored(dir, SECRETS_FILE)?;
-        }
-        None => {
-            if path.exists() {
-                fs::remove_file(&path)?;
-            }
-        }
-    }
-    Ok(())
+    let mut secrets = read_secrets(dir)?;
+    secrets.password_hash = password_hash.map(str::to_string);
+    save_secrets(dir, &secrets)
 }
 
 fn write_private(path: &Path, text: &str) -> Result<(), Failure> {
