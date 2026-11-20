@@ -10,6 +10,7 @@ use std::fmt;
 pub mod check;
 pub mod disk;
 pub mod hardware;
+pub mod wifi;
 
 /// The script that runs inside the builder VM.
 pub const BUILDER_SH: &str = include_str!("../assets/builder.sh");
@@ -80,6 +81,8 @@ pub struct Inputs {
     pub ssh_keys: Vec<String>,
     /// SHA-512 crypt hash from muxtra.secrets, when a password is set.
     pub password_hash: Option<String>,
+    /// Saved Wi-Fi networks from muxtra.secrets.
+    pub wifi: Vec<wifi::Network>,
 }
 
 /// Works out every setting for the builder.
@@ -210,6 +213,24 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
         .collect();
     config.push_str(&format!("HW_PACKAGES=({})\n", quote_list(&hw_packages)));
     config.push_str(&format!("EARLY_MODULES=({})\n", quote_list(&early)));
+    let with_wifi = network.contains(&Network::Wifi);
+    let wifi_files: Vec<String> = if with_wifi {
+        inputs
+            .wifi
+            .iter()
+            .map(|n| wifi::iwd_file(&n.ssid))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let wifi_configs: Vec<String> = if with_wifi {
+        inputs.wifi.iter().map(wifi::iwd_config).collect()
+    } else {
+        Vec::new()
+    };
+    config.push_str(&format!("WITH_WIFI={}\n", quote(flag(with_wifi))));
+    config.push_str(&format!("WIFI_FILES=({})\n", quote_list(&wifi_files)));
+    config.push_str(&format!("WIFI_CONFIGS=({})\n", quote_list(&wifi_configs)));
 
     Ok(Plan {
         config_sh: config,
@@ -428,6 +449,7 @@ mod tests {
         Inputs {
             ssh_keys: vec![KEY.to_string()],
             password_hash: None,
+            wifi: vec![],
         }
     }
 
@@ -609,6 +631,9 @@ mod tests {
             "PACKAGES",
             "HW_PACKAGES",
             "EARLY_MODULES",
+            "WITH_WIFI",
+            "WIFI_FILES",
+            "WIFI_CONFIGS",
         ] {
             assert!(
                 BUILDER_SH.contains(&format!("${var}"))

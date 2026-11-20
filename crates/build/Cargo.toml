@@ -9,3 +9,5 @@ rust-version.workspace = true
 
 [dependencies]
 muxtra-manifest = { path = "../manifest" }
+pbkdf2 = { version = "0.13", default-features = false, features = ["hmac"] }
+sha1 = "0.11"

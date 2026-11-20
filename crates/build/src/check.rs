@@ -86,6 +86,12 @@ pub fn probe_script(manifest: &Manifest) -> String {
             crate::quote(u)
         ));
     }
+    if manifest.modules.network.contains(&Network::Wifi) {
+        s.push_str(
+            "fact service:iwd \"$(systemctl is-active iwd 2>/dev/null)\"\n\
+             fact wifi-networks \"$(sudo -n sh -c 'ls /var/lib/iwd/*.psk 2>/dev/null | wc -l' 2>/dev/null)\"\n",
+        );
+    }
     s.push_str("command -v node >/dev/null && fact node \"$(node --version)\"\n");
     if manifest.modules.remote.contains(&Remote::Tailscale) {
         s.push_str(
@@ -161,11 +167,19 @@ pub fn report(
         .split(',')
         .filter(|s| !s.is_empty())
         .collect();
-    let not_running: Vec<String> = manifest
+    // Services that must be running: everything in boot.start, plus the
+    // Wi-Fi manager on Macs with Wi-Fi.
+    let mut expected: Vec<String> = manifest
         .boot
         .start
         .iter()
         .map(|s| unit(s).to_string())
+        .collect();
+    if manifest.modules.network.contains(&Network::Wifi) {
+        expected.push("iwd".to_string());
+    }
+    let not_running: Vec<String> = expected
+        .into_iter()
         .filter(|u| fact(&format!("service:{u}")) != "active")
         .collect();
     out.push(
@@ -303,11 +317,13 @@ pub fn report(
 
     let network = &manifest.modules.network;
     if network.contains(&Network::Wifi) {
-        out.push(Check::new(
-            "Wi-Fi",
-            Status::RealMac,
-            "can't be tested in a VM, needs a real Mac",
-        ));
+        let saved: usize = fact("wifi-networks").parse().unwrap_or(0);
+        let detail = match saved {
+            0 => "no networks saved yet. Run `muxtra wifi add`, then build again".to_string(),
+            1 => "1 network saved. It joins on a real Mac".to_string(),
+            n => format!("{n} networks saved. They join on a real Mac"),
+        };
+        out.push(Check::new("Wi-Fi", Status::RealMac, detail));
     }
     if network.contains(&Network::Thunderbolt) {
         out.push(Check::new(
@@ -343,6 +359,7 @@ mod tests {
             &Inputs {
                 ssh_keys: vec!["ssh-ed25519 AAAA test".into()],
                 password_hash: None,
+                wifi: vec![],
             },
         )
         .unwrap();
@@ -353,7 +370,8 @@ mod tests {
         parse_facts(
             "state\trunning\nfailed\t\nrunning\t21\nhostname\tagent-box\nmemory\t239\ndisk\t1100\n\
              slots\t4\nsudo\tnopass\nservice:ssh\tactive\nservice:tailscaled\tactive\nnode\tv26.13.1\n\
-             tailscale\t1.104.7\ntailscale-state\tNeedsLogin\nmosh\tyes\npkg:git\tinstall ok installed\n",
+             tailscale\t1.104.7\ntailscale-state\tNeedsLogin\nmosh\tyes\npkg:git\tinstall ok installed\n\
+             service:iwd\tactive\nwifi-networks\t1\n",
         )
     }
 
@@ -450,5 +468,38 @@ mod tests {
         assert_eq!(f.get("failed").map(String::as_str), Some(""));
         assert_eq!(f.get("state").map(String::as_str), Some("running"));
         assert_eq!(f.len(), 2);
+    }
+}
+
+#[cfg(test)]
+mod wifi_tests {
+    use super::*;
+    use crate::{Inputs, plan};
+
+    #[test]
+    fn iwd_not_running_fails_services() {
+        let m = Manifest::parse(include_str!("../../../starters/agent-box.toml")).unwrap();
+        let p = plan(
+            &m,
+            &Inputs {
+                ssh_keys: vec!["ssh-ed25519 AAAA t".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let facts = parse_facts(
+            "state\trunning\nfailed\t\nrunning\t20\nservice:ssh\tactive\nservice:tailscaled\tactive\n\
+             service:iwd\tinactive\nwifi-networks\t0\nslots\t4\nsudo\tnopass\n",
+        );
+        let seen = Observed {
+            boot_seconds: Some(20),
+            ssh: true,
+            sftp: true,
+        };
+        let checks = report(&m, &p, &seen, &facts);
+        let row = |n: &str| checks.iter().find(|c| c.name == n).unwrap().clone();
+        assert_eq!(row("Services").detail, "not running: iwd");
+        assert!(row("Wi-Fi").detail.contains("muxtra wifi add"));
+        assert!(probe_script(&m).contains("service:iwd"));
     }
 }

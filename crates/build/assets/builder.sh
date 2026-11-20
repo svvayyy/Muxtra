@@ -206,6 +206,22 @@ DHCP=yes
 LinkLocalAddressing=yes
 EOF
 fi
+if [ "$WITH_WIFI" = 1 ]; then
+  # iwd joins saved networks on its own; networkd gets the address.
+  cat > "$TARGET/etc/systemd/network/25-wireless.network" <<'EOF'
+[Match]
+Name=wl*
+
+[Network]
+DHCP=yes
+EOF
+  install -d -m 0700 "$TARGET/var/lib/iwd"
+  for i in "${!WIFI_FILES[@]}"; do
+    printf '%s' "${WIFI_CONFIGS[$i]}" > "$TARGET/var/lib/iwd/${WIFI_FILES[$i]}"
+    chmod 0600 "$TARGET/var/lib/iwd/${WIFI_FILES[$i]}"
+  done
+  in_target systemctl enable iwd >/dev/null
+fi
 in_target systemctl enable systemd-networkd systemd-resolved avahi-daemon >/dev/null
 # Never hold up boot waiting for a cable that is not plugged in.
 install -d "$TARGET/etc/systemd/system/systemd-networkd-wait-online.service.d"

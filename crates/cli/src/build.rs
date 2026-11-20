@@ -112,6 +112,7 @@ pub fn prepare(manifest: &Path) -> Result<Prepared, Failure> {
         &muxtra_build::Inputs {
             ssh_keys: keys.public,
             password_hash,
+            wifi: Vec::new(),
         },
     )?;
     Ok(Prepared {
