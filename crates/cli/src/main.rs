@@ -13,6 +13,7 @@ mod new;
 mod passwd;
 mod poof;
 mod prompt;
+mod remote;
 mod style;
 mod tailscale;
 mod wifi;

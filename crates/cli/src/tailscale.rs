@@ -5,6 +5,7 @@
 //! or store. With someone at the keyboard it waits until the Mac is
 //! connected. An agent gets the link right away to pass on to a person.
 
+use crate::remote::Mac;
 use crate::style::{self, Role, say};
 use crate::{Failure, files, keys, prompt};
 use clap::{Args, Subcommand};
@@ -70,11 +71,12 @@ fn run_login(manifest: &std::path::Path, args: LoginArgs) -> Result<(), Failure>
             "Signing in happens over SSH, and muxtra.toml has no \"ssh\" in modules.remote. Run `sudo tailscale login` on the Mac itself instead.".to_string(),
         ));
     }
-    let mac = Mac {
-        target: args.host.clone().unwrap_or_else(|| format!("{name}.local")),
-        user: manifest.user.name.clone(),
-        identities: keys::resolve(&manifest.user.ssh_keys)?.identities,
-    };
+    let mac = Mac::new(
+        args.host.clone(),
+        &name,
+        &manifest.user.name,
+        keys::resolve(&manifest.user.ssh_keys)?.identities,
+    );
     let o = style::progress();
     say(&o.paint(Role::Dim, &format!("Connecting to {}...", mac.target)));
 
@@ -85,8 +87,9 @@ fn run_login(manifest: &std::path::Path, args: LoginArgs) -> Result<(), Failure>
 
     let wait = args.wait || (!args.no_wait && !args.json && prompt::someone_is_here());
     let mut child = Command::new("ssh")
-        .args(mac.ssh_args())
+        .args(mac.options())
         .args(["-o", "ServerAliveInterval=15"])
+        .arg(mac.destination())
         .arg(tailscale::login_command(WAIT_SECS))
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -116,7 +119,7 @@ fn run_login(manifest: &std::path::Path, args: LoginArgs) -> Result<(), Failure>
         }
         let stderr = String::from_utf8_lossy(&status.stderr).into_owned();
         if status.status.code() == Some(255) {
-            return Err(Failure(ssh_problem(&mac, &stderr)));
+            return Err(Failure(mac.problem(&stderr)));
         }
         return Err(Failure(format!(
             "Tailscale on {name} could not start signing in. It said: {}",
@@ -169,82 +172,15 @@ fn run_login(manifest: &std::path::Path, args: LoginArgs) -> Result<(), Failure>
     report(&name, &mac, state, args.json)
 }
 
-/// How to reach the Mac over SSH.
-struct Mac {
-    target: String,
-    user: String,
-    identities: Vec<PathBuf>,
-}
-
-impl Mac {
-    fn ssh_args(&self) -> Vec<String> {
-        let mut args: Vec<String> = [
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "ConnectTimeout=10",
-            "-o",
-            "StrictHostKeyChecking=accept-new",
-            "-o",
-            "LogLevel=ERROR",
-        ]
-        .iter()
-        .map(|s| s.to_string())
-        .collect();
-        for id in &self.identities {
-            args.push("-i".to_string());
-            args.push(id.display().to_string());
-        }
-        args.push(if self.target.contains('@') {
-            self.target.clone()
-        } else {
-            format!("{}@{}", self.user, self.target)
-        });
-        args
-    }
-}
-
 /// Asks Tailscale on the Mac where it is.
 fn current_state(mac: &Mac, name: &str) -> Result<State, Failure> {
-    let out = Command::new("ssh")
-        .args(mac.ssh_args())
-        .arg(tailscale::STATUS_COMMAND)
-        .stdin(Stdio::null())
-        .output()
-        .map_err(|_| Failure("Could not run ssh on this Mac.".to_string()))?;
-    if !out.status.success() {
-        return Err(Failure(ssh_problem(
-            mac,
-            &String::from_utf8_lossy(&out.stderr),
-        )));
-    }
-    let text = String::from_utf8_lossy(&out.stdout);
+    let text = mac.run(tailscale::STATUS_COMMAND, None)?;
     if text.trim() == "not-installed" {
         return Err(Failure(format!(
             "Tailscale is not installed on {name}. The image was built before \"tailscale\" was in muxtra.toml: run `muxtra build` and `muxtra poof` again."
         )));
     }
     Ok(tailscale::state(&text)?)
-}
-
-/// A plain-English reason SSH failed, with what to do next.
-fn ssh_problem(mac: &Mac, stderr: &str) -> String {
-    let target = &mac.target;
-    if stderr.contains("REMOTE HOST IDENTIFICATION HAS CHANGED")
-        || stderr.contains("Host key verification failed")
-    {
-        format!(
-            "{target} has a new SSH identity, which is normal after putting Muxtra on it again. Forget the old one with `ssh-keygen -R {target}`, then try again."
-        )
-    } else if stderr.contains("Permission denied") {
-        format!(
-            "{target} did not accept your SSH key. It only accepts the keys in muxtra.toml from when it was built."
-        )
-    } else {
-        format!(
-            "Could not reach {target}. Make sure it is on, running Muxtra, and on the same network as this Mac. If it is somewhere else, pass its address with --host."
-        )
-    }
 }
 
 fn report(name: &str, mac: &Mac, state: State, json: bool) -> Result<(), Failure> {
