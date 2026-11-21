@@ -14,6 +14,7 @@ mod passwd;
 mod poof;
 mod prompt;
 mod style;
+mod tailscale;
 mod wifi;
 
 use clap::{Args, Parser, Subcommand};
@@ -51,6 +52,8 @@ enum Command {
     Passwd(passwd::PasswdArgs),
     /// Save, list or forget Wi-Fi networks for the Mac
     Wifi(wifi::WifiArgs),
+    /// Sign the Mac in to Tailscale, so you can reach it from anywhere
+    Tailscale(tailscale::TailscaleArgs),
 }
 
 /// Where to find muxtra.toml.
@@ -77,6 +80,7 @@ fn main() -> ExitCode {
         Command::New(args) => new::run(args),
         Command::Passwd(args) => passwd::run(args),
         Command::Wifi(args) => wifi::run(args),
+        Command::Tailscale(args) => tailscale::run(args),
         Command::Build(args) => build::run(args),
         Command::Check(args) => check::run(args),
         Command::Poof(args) => poof::run(args),
