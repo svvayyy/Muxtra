@@ -88,6 +88,25 @@ impl Mac {
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     }
 
+    /// Opens an SFTP session and lists the home folder.
+    pub fn sftp_works(&self) -> bool {
+        let Ok(mut child) = Command::new("sftp")
+            .args(["-b", "-"])
+            .args(self.options())
+            .arg(self.destination())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        else {
+            return false;
+        };
+        if let Some(mut input) = child.stdin.take() {
+            let _ = input.write_all(b"pwd\nls\n");
+        }
+        child.wait().is_ok_and(|s| s.success())
+    }
+
     /// A plain-English reason SSH failed, with what to do next.
     pub fn problem(&self, stderr: &str) -> String {
         let target = &self.target;

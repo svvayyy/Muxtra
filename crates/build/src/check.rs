@@ -1,9 +1,9 @@
 //! What `muxtra check` asks a booted system, and how it turns the answers
 //! into a plain-English report.
 //!
-//! The probe script runs over SSH inside the VM and prints one
-//! `key<TAB>value` line per fact. Everything here is pure, so it is tested
-//! without a VM.
+//! The probe script runs over SSH, inside the VM or on a real Mac, and
+//! prints one `key<TAB>value` line per fact. Everything here is pure, so it
+//! is tested without either.
 
 use crate::Plan;
 use muxtra_manifest::{Manifest, Network, Remote};
@@ -16,6 +16,8 @@ pub enum Status {
     Fail,
     /// Cannot be tested in a VM. Only a real Mac can say.
     RealMac,
+    /// Ready, but something has to be plugged in or saved to test it.
+    Untested,
 }
 
 impl Status {
@@ -24,6 +26,7 @@ impl Status {
             Status::Pass => "pass",
             Status::Fail => "fail",
             Status::RealMac => "needs-real-mac",
+            Status::Untested => "untested",
         }
     }
 }
@@ -64,7 +67,7 @@ fn unit(service: &str) -> &str {
     if service == "sshd" { "ssh" } else { service }
 }
 
-/// The script `muxtra check` runs inside the VM over SSH.
+/// The script `muxtra check` runs over SSH, in the VM or on a real Mac.
 pub fn probe_script(manifest: &Manifest) -> String {
     let mut s = String::from(
         "#!/bin/bash\n\
@@ -75,8 +78,12 @@ pub fn probe_script(manifest: &Manifest) -> String {
          fact running \"$(systemctl list-units --type=service --state=running --no-legend --plain 2>/dev/null | wc -l)\"\n\
          fact hostname \"$(hostname)\"\n\
          fact memory \"$(free -m | awk '/^Mem:/{print $3}')\"\n\
+         fact memtotal \"$(free -m | awk '/^Mem:/{print $2}')\"\n\
          fact disk \"$(df -m / | awk 'NR==2{print $3}')\"\n\
          fact parts \"$(lsblk -no PARTLABEL 2>/dev/null | grep '^muxtra-' | paste -sd, -)\"\n\
+         fact uptime \"$(cut -d. -f1 /proc/uptime)\"\n\
+         fact model \"$(cat /sys/class/dmi/id/product_name 2>/dev/null)\"\n\
+         timeout 5 bash -c '</dev/tcp/deb.debian.org/443' 2>/dev/null && fact internet yes\n\
          sudo -n true 2>/dev/null && fact sudo nopass || fact sudo pass\n",
     );
     for service in &manifest.boot.start {
@@ -89,7 +96,20 @@ pub fn probe_script(manifest: &Manifest) -> String {
     if manifest.modules.network.contains(&Network::Wifi) {
         s.push_str(
             "fact service:iwd \"$(systemctl is-active iwd 2>/dev/null)\"\n\
-             fact wifi-networks \"$(sudo -n sh -c 'ls /var/lib/iwd/*.psk 2>/dev/null | wc -l' 2>/dev/null)\"\n",
+             fact wifi-networks \"$(sudo -n sh -c 'ls /var/lib/iwd/*.psk 2>/dev/null | wc -l' 2>/dev/null)\"\n\
+             wl=$(for d in /sys/class/net/*/wireless; do [ -d \"$d\" ] && basename \"$(dirname \"$d\")\"; done | head -1)\n\
+             fact wifi-iface \"$wl\"\n\
+             if [ -n \"$wl\" ]; then\n\
+               fact wifi-ssid \"$(iwctl station \"$wl\" show 2>/dev/null | sed 's/\\x1b\\[[0-9;]*m//g' | sed -n 's/^ *Connected network  *//p')\"\n\
+               fact wifi-signal \"$(awk -v i=\"$wl:\" '$1==i{print int($4)}' /proc/net/wireless)\"\n\
+             fi\n",
+        );
+    }
+    if manifest.modules.network.contains(&Network::Thunderbolt) {
+        s.push_str(
+            "fact tb-domains \"$(ls /sys/bus/thunderbolt/devices 2>/dev/null | grep -c '^domain')\"\n\
+             fact tb-net \"$(ls /sys/class/net | grep -m1 '^thunderbolt')\"\n\
+             PATH=\"$PATH:/usr/sbin:/sbin\" modinfo -n thunderbolt_net >/dev/null 2>&1 && fact tb-driver yes\n",
         );
     }
     s.push_str("command -v node >/dev/null && fact node \"$(node --version)\"\n");
@@ -129,6 +149,27 @@ pub struct Observed {
     pub ssh: bool,
     /// Whether an SFTP session worked.
     pub sftp: bool,
+    /// Checking a real Mac instead of the VM.
+    pub real: bool,
+}
+
+/// "37 min", "2 h 5 min" or "3 days".
+fn running_for(secs: u64) -> String {
+    match secs {
+        s if s < 3600 => format!("{} min", (s / 60).max(1)),
+        s if s < 86400 => format!("{} h {} min", s / 3600, s % 3600 / 60),
+        s if s < 2 * 86400 => "1 day".to_string(),
+        s => format!("{} days", s / 86400),
+    }
+}
+
+/// A Wi-Fi signal level in plain words.
+fn signal_words(dbm: i64) -> &'static str {
+    match dbm {
+        d if d >= -60 => "strong",
+        d if d >= -70 => "okay",
+        _ => "weak",
+    }
 }
 
 /// Turns everything that was seen into the report rows.
@@ -142,10 +183,22 @@ pub fn report(
     let fact = |k: &str| facts.get(k).map(String::as_str).unwrap_or("");
     let has = |r: Remote| manifest.modules.remote.contains(&r);
 
-    out.push(match seen.boot_seconds {
-        Some(s) => Check::new("Boots", Status::Pass, format!("login in {s}s")),
-        None => Check::new("Boots", Status::Fail, "never reached the login prompt"),
-    });
+    if seen.real {
+        // Reached over SSH, so it booted. Say how long ago.
+        let up = fact("uptime").parse::<u64>().ok();
+        out.push(Check::new(
+            "Boots",
+            Status::Pass,
+            up.map_or("running".to_string(), |s| {
+                format!("running for {}", running_for(s))
+            }),
+        ));
+    } else {
+        out.push(match seen.boot_seconds {
+            Some(s) => Check::new("Boots", Status::Pass, format!("login in {s}s")),
+            None => Check::new("Boots", Status::Fail, "never reached the login prompt"),
+        });
+    }
 
     if has(Remote::Ssh) {
         out.push(match (seen.ssh, seen.sftp) {
@@ -161,6 +214,20 @@ pub fn report(
     if !seen.ssh {
         // Nothing else can be checked without a way in.
         return out;
+    }
+
+    if seen.real {
+        let model = fact("model");
+        let wanted = &manifest.system.mac;
+        out.push(if model == wanted {
+            Check::new("Mac model", Status::Pass, model)
+        } else {
+            Check::new(
+                "Mac model",
+                Status::Fail,
+                format!("this is a {model}, but muxtra.toml is for a {wanted}. Drivers are picked per model, so set system.mac and build again"),
+            )
+        });
     }
 
     let failed: Vec<&str> = fact("failed")
@@ -215,6 +282,12 @@ pub fn report(
         },
     );
 
+    out.push(if fact("internet") == "yes" {
+        Check::new("Internet", Status::Pass, "reaches the Debian servers")
+    } else {
+        Check::new("Internet", Status::Fail, "cannot reach the internet")
+    });
+
     if let Some(major) = plan.node_major {
         let version = fact("node");
         let wanted = format!("v{major}.");
@@ -236,6 +309,11 @@ pub fn report(
         out.push(match (version.is_empty(), fact("tailscale-state")) {
             (true, _) => Check::new("Tailscale", Status::Fail, "not installed"),
             (false, "Running") => Check::new("Tailscale", Status::Pass, "installed and signed in"),
+            (false, _) if seen.real => Check::new(
+                "Tailscale",
+                Status::Pass,
+                "installed, not signed in yet. Run `muxtra tailscale login`",
+            ),
             (false, _) => Check::new("Tailscale", Status::Pass, "installed, not signed in yet"),
         });
     }
@@ -294,10 +372,15 @@ pub fn report(
 
     let memory = fact("memory");
     if !memory.is_empty() {
+        let total = fact("memtotal")
+            .parse::<f64>()
+            .map(|mb| format!(" of {:.1} GB", mb / 1024.0))
+            .unwrap_or_default();
+        let when = if seen.real { "" } else { " at idle" };
         out.push(Check::new(
             "Memory",
             Status::Pass,
-            format!("{memory} MB used at idle"),
+            format!("{memory} MB used{total}{when}"),
         ));
     }
     let parts: Vec<&str> = fact("parts").split(',').collect();
@@ -335,25 +418,79 @@ pub fn report(
             1 => "1 network saved. It joins on a real Mac".to_string(),
             n => format!("{n} networks saved. They join on a real Mac"),
         };
-        out.push(Check::new("Wi-Fi", Status::RealMac, detail));
+        out.push(if !seen.real {
+            Check::new("Wi-Fi", Status::RealMac, detail)
+        } else if fact("wifi-iface").is_empty() {
+            Check::new(
+                "Wi-Fi",
+                Status::Fail,
+                "no Wi-Fi hardware found. The driver or firmware for this Mac's Wi-Fi is missing",
+            )
+        } else if !fact("wifi-ssid").is_empty() {
+            let signal = fact("wifi-signal")
+                .parse::<i64>()
+                .map(|d| format!(", {} signal ({d} dBm)", signal_words(d)))
+                .unwrap_or_default();
+            Check::new(
+                "Wi-Fi",
+                Status::Pass,
+                format!("connected to {}{signal}", fact("wifi-ssid")),
+            )
+        } else if saved == 0 {
+            Check::new("Wi-Fi", Status::Untested, detail)
+        } else {
+            Check::new(
+                "Wi-Fi",
+                Status::Fail,
+                "not connected to any saved network. Is one in range?",
+            )
+        });
     }
     if network.contains(&Network::Thunderbolt) {
-        out.push(Check::new(
-            "Thunderbolt",
-            Status::RealMac,
-            "can't be tested in a VM, needs a real Mac",
-        ));
+        let tb_net = fact("tb-net");
+        out.push(if !seen.real {
+            Check::new(
+                "Thunderbolt",
+                Status::RealMac,
+                "can't be tested in a VM, needs a real Mac",
+            )
+        } else if !tb_net.is_empty() {
+            Check::new(
+                "Thunderbolt",
+                Status::Pass,
+                format!("cable connected ({tb_net})"),
+            )
+        } else if fact("tb-driver") != "yes" {
+            Check::new(
+                "Thunderbolt",
+                Status::Fail,
+                "the Thunderbolt networking driver is missing",
+            )
+        } else if fact("tb-domains").parse::<u32>().unwrap_or(0) == 0 {
+            Check::new(
+                "Thunderbolt",
+                Status::Fail,
+                "no Thunderbolt controller found",
+            )
+        } else {
+            Check::new(
+                "Thunderbolt",
+                Status::Untested,
+                "ready. Plug in a Thunderbolt cable to another Mac to test it",
+            )
+        });
     }
     out
 }
 
-/// Counts for the summary line: (passed, failed, need a real Mac).
-pub fn tally(checks: &[Check]) -> (usize, usize, usize) {
+/// Counts for the summary line: (passed, failed, need a real Mac, untested).
+pub fn tally(checks: &[Check]) -> (usize, usize, usize, usize) {
     let count = |s: Status| checks.iter().filter(|c| c.status == s).count();
     (
         count(Status::Pass),
         count(Status::Fail),
         count(Status::RealMac),
+        count(Status::Untested),
     )
 }
 
@@ -383,7 +520,7 @@ mod tests {
             "state\trunning\nfailed\t\nrunning\t21\nhostname\tagent-box\nmemory\t239\ndisk\t1100\n\
              parts\tmuxtra-efi,muxtra-root-a,muxtra-root-b,muxtra-home\nsudo\tnopass\nservice:ssh\tactive\nservice:tailscaled\tactive\nnode\tv26.13.1\n\
              tailscale\t1.104.7\ntailscale-state\tNeedsLogin\nmosh\tyes\npkg:git\tinstall ok installed\n\
-             service:iwd\tactive\nwifi-networks\t1\n",
+             service:iwd\tactive\nwifi-networks\t1\ninternet\tyes\nmemtotal\t1967\n",
         )
     }
 
@@ -392,6 +529,7 @@ mod tests {
             boot_seconds: Some(24),
             ssh: true,
             sftp: true,
+            real: false,
         }
     }
 
@@ -406,6 +544,7 @@ mod tests {
                 "Boots",
                 "SSH",
                 "Services",
+                "Internet",
                 "Node",
                 "Tailscale",
                 "mosh",
@@ -417,7 +556,9 @@ mod tests {
                 "Thunderbolt"
             ]
         );
-        assert_eq!(tally(&checks), (10, 0, 2));
+        assert_eq!(tally(&checks), (11, 0, 2, 0));
+        let memory = checks.iter().find(|c| c.name == "Memory").unwrap();
+        assert_eq!(memory.detail, "239 MB used of 1.9 GB at idle");
         let tailscale = checks.iter().find(|c| c.name == "Tailscale").unwrap();
         assert_eq!(tailscale.detail, "installed, not signed in yet");
         assert_eq!(checks[2].detail, "21 running, none failed");
@@ -444,6 +585,70 @@ mod tests {
         );
         assert_eq!(detail("Tools").detail, "missing: git");
         assert_eq!(tally(&checks).1, 3);
+    }
+
+    fn real_mac() -> BTreeMap<String, String> {
+        let mut f = healthy();
+        for (k, v) in [
+            ("uptime", "2220"),
+            ("model", "MacBookPro13,3"),
+            ("parts", "muxtra-efi,muxtra-root-a,muxtra-home"),
+            ("wifi-iface", "wlan0"),
+            ("wifi-ssid", "Example Net"),
+            ("wifi-signal", "-75"),
+            ("tb-domains", "2"),
+            ("tb-net", ""),
+            ("tb-driver", "yes"),
+        ] {
+            f.insert(k.into(), v.into());
+        }
+        f
+    }
+
+    fn real_seen() -> Observed {
+        Observed {
+            boot_seconds: None,
+            ssh: true,
+            sftp: true,
+            real: true,
+        }
+    }
+
+    #[test]
+    fn real_mac_report() {
+        let (m, p) = setup(&AGENT_BOX.replace("iMac14,4", "MacBookPro13,3"));
+        let checks = report(&m, &p, &real_seen(), &real_mac());
+        let row = |n: &str| checks.iter().find(|c| c.name == n).unwrap().clone();
+        assert_eq!(row("Boots").detail, "running for 37 min");
+        assert_eq!(row("Mac model").status, Status::Pass);
+        assert_eq!(
+            row("Wi-Fi").detail,
+            "connected to Example Net, weak signal (-75 dBm)"
+        );
+        assert_eq!(row("Thunderbolt").status, Status::Untested);
+        assert_eq!(
+            row("Disk").detail,
+            "1.1 GB used, slot A only (this drive has no room for B)"
+        );
+        assert!(row("Tailscale").detail.contains("muxtra tailscale login"));
+        assert_eq!(tally(&checks), (13, 0, 0, 1));
+    }
+
+    #[test]
+    fn real_mac_problems() {
+        let (m, p) = setup(AGENT_BOX);
+        let mut facts = real_mac();
+        facts.insert("wifi-ssid".into(), "".into());
+        facts.insert("tb-domains".into(), "0".into());
+        facts.remove("internet");
+        let checks = report(&m, &p, &real_seen(), &facts);
+        let row = |n: &str| checks.iter().find(|c| c.name == n).unwrap().clone();
+        assert!(row("Mac model").detail.contains("muxtra.toml is for a"));
+        assert!(row("Wi-Fi").detail.starts_with("not connected"));
+        assert_eq!(row("Thunderbolt").detail, "no Thunderbolt controller found");
+        assert_eq!(row("Internet").status, Status::Fail);
+        assert_eq!(tally(&checks).1, 4);
+        assert_eq!(running_for(7500), "2 h 5 min");
     }
 
     #[test]
@@ -480,6 +685,7 @@ mod tests {
                 boot_seconds: Some(30),
                 ssh: false,
                 sftp: false,
+                real: false,
             },
             &BTreeMap::new(),
         );
@@ -531,6 +737,7 @@ mod wifi_tests {
             boot_seconds: Some(20),
             ssh: true,
             sftp: true,
+            real: false,
         };
         let checks = report(&m, &p, &seen, &facts);
         let row = |n: &str| checks.iter().find(|c| c.name == n).unwrap().clone();

@@ -1,9 +1,13 @@
 //! `muxtra check`: boot the image in a virtual Intel Mac and report, in
 //! plain English, what works. Builds first if the image is missing or
 //! out of date. The image itself is never changed.
+//!
+//! `muxtra check --real` runs the same report on the real Mac over SSH,
+//! plus what a VM cannot test: the Mac model, Wi-Fi, Thunderbolt.
 
 use crate::build::{self, clock};
 use crate::host::{self, Arch};
+use crate::remote::Mac;
 use crate::style::{self, Role, say};
 use crate::{Failure, ManifestArgs, prompt};
 use clap::Args;
@@ -27,6 +31,12 @@ pub struct CheckArgs {
     /// Leave the VM running after the report, so you can sign in and look around
     #[arg(long)]
     stay: bool,
+    /// Check the real Mac over SSH instead of a VM (at <name>.local)
+    #[arg(long, conflicts_with = "stay")]
+    real: bool,
+    /// Where to reach the real Mac, like an IP address. Implies --real
+    #[arg(long, conflicts_with = "stay")]
+    host: Option<String>,
 }
 
 /// Longest wait for the login prompt (emulated Intel boots are slower).
@@ -52,6 +62,9 @@ impl Drop for Vm {
 pub fn run(args: CheckArgs) -> Result<(), Failure> {
     if args.json {
         style::send_progress_to_stderr();
+    }
+    if args.real || args.host.is_some() {
+        return run_real(args);
     }
     let p = build::prepare(&args.manifest.manifest)?;
     let o = style::progress();
@@ -155,7 +168,7 @@ pub fn run(args: CheckArgs) -> Result<(), Failure> {
     }
 
     let checks = probe::report(&p.manifest, &p.plan, &seen, &facts);
-    let (passed, failed, real_mac) = probe::tally(&checks);
+    let (passed, failed, real_mac, untested) = probe::tally(&checks);
     let ssh_command = format!(
         "ssh -p {port} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {user}@127.0.0.1"
     );
@@ -173,6 +186,7 @@ pub fn run(args: CheckArgs) -> Result<(), Failure> {
             "passed": passed,
             "failed": failed,
             "needs_real_mac": real_mac,
+            "untested": untested,
             "seconds": started.elapsed().as_secs(),
             "checks": rows,
         });
@@ -185,7 +199,12 @@ pub fn run(args: CheckArgs) -> Result<(), Failure> {
             serde_json::to_string_pretty(&doc).expect("JSON always serializes")
         );
     } else {
-        print_report(&checks, passed, failed, real_mac, started.elapsed());
+        print_report(
+            &checks,
+            (passed, failed, real_mac, untested),
+            started.elapsed(),
+            false,
+        );
     }
 
     if !seen.ssh || seen.boot_seconds.is_none() {
@@ -218,19 +237,98 @@ pub fn run(args: CheckArgs) -> Result<(), Failure> {
     Ok(())
 }
 
-fn print_report(checks: &[Check], passed: usize, failed: usize, real_mac: usize, took: Duration) {
+/// Checks the real Mac over SSH. Nothing is built and nothing is changed.
+fn run_real(args: CheckArgs) -> Result<(), Failure> {
+    let p = build::prepare(&args.manifest.manifest)?;
+    let name = p.manifest.system.name.clone();
+    if !p
+        .manifest
+        .modules
+        .remote
+        .contains(&muxtra_manifest::Remote::Ssh)
+    {
+        return Err(Failure(
+            "Checking a real Mac happens over SSH, and muxtra.toml has no \"ssh\" in modules.remote.".to_string(),
+        ));
+    }
+    let mac = Mac::new(
+        args.host.clone(),
+        &name,
+        &p.manifest.user.name,
+        p.identities.clone(),
+    );
+    let o = style::progress();
+    say(&format!(
+        "{} {} {}",
+        o.paint(Role::Accent, "Checking"),
+        o.paint(Role::Value, &name),
+        o.paint(Role::Dim, &format!("on the real Mac at {}.", mac.target))
+    ));
+    let started = Instant::now();
+    mac.run("true", None)?;
+    let seen = Observed {
+        boot_seconds: None,
+        ssh: true,
+        sftp: mac.sftp_works(),
+        real: true,
+    };
+    let output = mac.run("bash -s", Some(&probe::probe_script(&p.manifest)))?;
+    let facts = probe::parse_facts(&output);
+    let checks = probe::report(&p.manifest, &p.plan, &seen, &facts);
+    let counts = probe::tally(&checks);
+    let (passed, failed, _, untested) = counts;
+
+    if args.json {
+        let rows: Vec<_> = checks
+            .iter()
+            .map(|c| serde_json::json!({ "name": c.name, "status": c.status.as_str(), "detail": c.detail }))
+            .collect();
+        let doc = serde_json::json!({
+            "ok": failed == 0,
+            "name": name,
+            "mac": p.manifest.system.mac,
+            "real": true,
+            "host": mac.target,
+            "passed": passed,
+            "failed": failed,
+            "untested": untested,
+            "seconds": started.elapsed().as_secs(),
+            "checks": rows,
+        });
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&doc).expect("JSON always serializes")
+        );
+    } else {
+        print_report(&checks, counts, started.elapsed(), true);
+    }
+    if failed > 0 {
+        return Err(Failure(String::new()));
+    }
+    Ok(())
+}
+
+/// Prints the rows and summary. `counts` is (passed, failed, need a real
+/// Mac, untested), from `tally`.
+fn print_report(
+    checks: &[Check],
+    counts: (usize, usize, usize, usize),
+    took: Duration,
+    real: bool,
+) {
+    let (passed, failed, real_mac, untested) = counts;
     let o = style::out();
     println!();
     for c in checks {
         let (mark, role) = match c.status {
             Status::Pass => ("✓", Role::Ok),
             Status::Fail => ("✗", Role::Err),
-            Status::RealMac => ("!", Role::Warn),
+            Status::RealMac | Status::Untested => ("!", Role::Warn),
         };
         let detail_role = match c.status {
             Status::Pass => Role::Dim,
             Status::Fail => Role::Err,
-            Status::RealMac => Role::Warn,
+            Status::RealMac | Status::Untested => Role::Warn,
         };
         println!(
             "{} {} {}",
@@ -246,12 +344,17 @@ fn print_report(checks: &[Check], passed: usize, failed: usize, real_mac: usize,
     if real_mac > 0 {
         summary.push(format!("{real_mac} need a real Mac"));
     }
+    if untested > 0 {
+        summary.push(format!("{untested} untested"));
+    }
     println!(
         "\n{}. {}",
         summary.join(", "),
         o.paint(Role::Dim, &format!("Took {}.", clock(took)))
     );
-    if failed == 0 {
+    if real {
+        // A real Mac has no next step to suggest: it is already running.
+    } else if failed == 0 {
         println!(
             "\n{} {} {}",
             o.paint(Role::Accent, "Next"),
