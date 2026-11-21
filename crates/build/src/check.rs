@@ -359,7 +359,7 @@ mod tests {
             &Inputs {
                 ssh_keys: vec!["ssh-ed25519 AAAA test".into()],
                 password_hash: None,
-                wifi: vec![],
+                ..Default::default()
             },
         )
         .unwrap();

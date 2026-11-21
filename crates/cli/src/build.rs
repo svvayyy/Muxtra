@@ -114,6 +114,7 @@ pub fn prepare(manifest: &Path) -> Result<Prepared, Failure> {
             ssh_keys: keys.public,
             password_hash,
             wifi: secrets.wifi,
+            wifi_country: wifi_country(),
         },
     )?;
     Ok(Prepared {
@@ -331,4 +332,43 @@ pub fn build_image(p: &Prepared, yes: bool) -> Result<PathBuf, Failure> {
 pub fn clock(d: Duration) -> String {
     let s = d.as_secs();
     format!("{}:{:02}", s / 60, s % 60)
+}
+
+/// The two-letter country of the Mac running the build, for Wi-Fi rules.
+/// macOS keeps it in AppleLocale (like "en_US"), other systems in LANG.
+fn wifi_country() -> Option<String> {
+    let locale = if cfg!(target_os = "macos") {
+        Command::new("defaults")
+            .args(["read", "-g", "AppleLocale"])
+            .output()
+            .ok()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+    } else {
+        std::env::var("LANG").ok()
+    };
+    country_from_locale(&locale?)
+}
+
+/// "en_US", "en_US@rg=gbzzzz" and "en_US.UTF-8" all give "US".
+fn country_from_locale(locale: &str) -> Option<String> {
+    let region = locale.split(['@', '.']).next()?.split('_').nth(1)?;
+    (region.len() == 2 && region.chars().all(|c| c.is_ascii_alphabetic()))
+        .then(|| region.to_ascii_uppercase())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::country_from_locale;
+
+    #[test]
+    fn countries_from_locales() {
+        assert_eq!(country_from_locale("en_US").as_deref(), Some("US"));
+        assert_eq!(
+            country_from_locale("en_GB@rg=gbzzzz").as_deref(),
+            Some("GB")
+        );
+        assert_eq!(country_from_locale("de_DE.UTF-8").as_deref(), Some("DE"));
+        assert_eq!(country_from_locale("en"), None);
+        assert_eq!(country_from_locale("C.UTF-8"), None);
+    }
 }

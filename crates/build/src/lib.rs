@@ -83,6 +83,9 @@ pub struct Inputs {
     pub password_hash: Option<String>,
     /// Saved Wi-Fi networks from muxtra.secrets.
     pub wifi: Vec<wifi::Network>,
+    /// Two-letter country for Wi-Fi rules (like "US"), from the Mac running
+    /// the build. Some Broadcom chips only connect once it is set.
+    pub wifi_country: Option<String>,
 }
 
 /// Works out every setting for the builder.
@@ -122,6 +125,7 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
     if network.contains(&Network::Wifi) {
         add("iwd");
         add("wireless-regdb");
+        add("iw");
     }
     if has(Remote::Ssh) {
         add("openssh-server");
@@ -229,6 +233,12 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
         Vec::new()
     };
     config.push_str(&format!("WITH_WIFI={}\n", quote(flag(with_wifi))));
+    let country = inputs
+        .wifi_country
+        .as_deref()
+        .filter(|c| c.len() == 2 && c.chars().all(|ch| ch.is_ascii_uppercase()))
+        .unwrap_or("");
+    config.push_str(&format!("WIFI_COUNTRY={}\n", quote(country)));
     config.push_str(&format!("WIFI_FILES=({})\n", quote_list(&wifi_files)));
     config.push_str(&format!("WIFI_CONFIGS=({})\n", quote_list(&wifi_configs)));
 
@@ -449,7 +459,7 @@ mod tests {
         Inputs {
             ssh_keys: vec![KEY.to_string()],
             password_hash: None,
-            wifi: vec![],
+            ..Default::default()
         }
     }
 
@@ -634,6 +644,7 @@ mod tests {
             "WITH_WIFI",
             "WIFI_FILES",
             "WIFI_CONFIGS",
+            "WIFI_COUNTRY",
         ] {
             assert!(
                 BUILDER_SH.contains(&format!("${var}"))
@@ -641,5 +652,30 @@ mod tests {
                 "builder.sh never reads {var}"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod country_tests {
+    use super::*;
+
+    #[test]
+    fn wifi_country_reaches_the_builder() {
+        let m = Manifest::parse(include_str!("../../../starters/agent-box.toml")).unwrap();
+        let mut inputs = Inputs {
+            ssh_keys: vec!["ssh-ed25519 AAAA t".into()],
+            wifi_country: Some("US".into()),
+            ..Default::default()
+        };
+        let p = plan(&m, &inputs).unwrap();
+        assert!(p.config_sh.contains("WIFI_COUNTRY='US'\n"));
+        assert!(p.packages.iter().any(|x| x == "iw"));
+        inputs.wifi_country = Some("usa; rm -rf /".into());
+        assert!(
+            plan(&m, &inputs)
+                .unwrap()
+                .config_sh
+                .contains("WIFI_COUNTRY=''\n")
+        );
     }
 }

@@ -238,8 +238,13 @@ done
 # ---------------------------------------------------------------------------
 step 6 "Installing the bootloader"
 # Text console on screen and on the serial port, which `muxtra check` reads.
-echo "root=PARTLABEL=muxtra-root-a rw quiet console=tty0 console=ttyS0,115200" \
-  > "$TARGET/etc/kernel/cmdline"
+cmdline="root=PARTLABEL=muxtra-root-a rw quiet console=tty0 console=ttyS0,115200"
+if [ "$WITH_WIFI" = 1 ] && [ -n "$WIFI_COUNTRY" ]; then
+  # Wi-Fi rules for this country. Some Broadcom chips (2016 MacBook Pro)
+  # fail to connect under the default worldwide rules.
+  cmdline="$cmdline cfg80211.ieee80211_regdom=$WIFI_COUNTRY"
+fi
+echo "$cmdline" > "$TARGET/etc/kernel/cmdline"
 echo muxtra > "$TARGET/etc/kernel/entry-token"
 if [ ${#EARLY_MODULES[@]} -gt 0 ]; then
   # Load these drivers before the login prompt (the built-in keyboard).
