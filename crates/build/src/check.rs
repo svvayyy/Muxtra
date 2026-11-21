@@ -76,7 +76,7 @@ pub fn probe_script(manifest: &Manifest) -> String {
          fact hostname \"$(hostname)\"\n\
          fact memory \"$(free -m | awk '/^Mem:/{print $3}')\"\n\
          fact disk \"$(df -m / | awk 'NR==2{print $3}')\"\n\
-         fact slots \"$(lsblk -no PARTLABEL 2>/dev/null | grep -c '^muxtra-')\"\n\
+         fact parts \"$(lsblk -no PARTLABEL 2>/dev/null | grep '^muxtra-' | paste -sd, -)\"\n\
          sudo -n true 2>/dev/null && fact sudo nopass || fact sudo pass\n",
     );
     for service in &manifest.boot.start {
@@ -300,20 +300,32 @@ pub fn report(
             format!("{memory} MB used at idle"),
         ));
     }
-    let slots = fact("slots");
+    let parts: Vec<&str> = fact("parts").split(',').collect();
+    let has_part = |p: &str| parts.contains(&p);
     let disk = fact("disk")
         .parse::<f64>()
         .map(|mb| format!("{:.1} GB used", mb / 1024.0))
         .unwrap_or_default();
-    out.push(if slots == "4" {
-        Check::new("Disk", Status::Pass, format!("{disk}, slots A and B ready"))
-    } else {
-        Check::new(
-            "Disk",
-            Status::Fail,
-            "the Muxtra partitions are not all there",
-        )
-    });
+    out.push(
+        if !["muxtra-efi", "muxtra-root-a", "muxtra-home"]
+            .iter()
+            .all(|p| has_part(p))
+        {
+            Check::new(
+                "Disk",
+                Status::Fail,
+                "the Muxtra partitions are not all there",
+            )
+        } else if has_part("muxtra-root-b") {
+            Check::new("Disk", Status::Pass, format!("{disk}, slots A and B ready"))
+        } else {
+            Check::new(
+                "Disk",
+                Status::Pass,
+                format!("{disk}, slot A only (this drive has no room for B)"),
+            )
+        },
+    );
 
     let network = &manifest.modules.network;
     if network.contains(&Network::Wifi) {
@@ -369,7 +381,7 @@ mod tests {
     fn healthy() -> BTreeMap<String, String> {
         parse_facts(
             "state\trunning\nfailed\t\nrunning\t21\nhostname\tagent-box\nmemory\t239\ndisk\t1100\n\
-             slots\t4\nsudo\tnopass\nservice:ssh\tactive\nservice:tailscaled\tactive\nnode\tv26.13.1\n\
+             parts\tmuxtra-efi,muxtra-root-a,muxtra-root-b,muxtra-home\nsudo\tnopass\nservice:ssh\tactive\nservice:tailscaled\tactive\nnode\tv26.13.1\n\
              tailscale\t1.104.7\ntailscale-state\tNeedsLogin\nmosh\tyes\npkg:git\tinstall ok installed\n\
              service:iwd\tactive\nwifi-networks\t1\n",
         )
@@ -435,6 +447,30 @@ mod tests {
     }
 
     #[test]
+    fn a_drive_without_room_for_slot_b_still_passes() {
+        let (m, p) = setup(AGENT_BOX);
+        let mut facts = healthy();
+        facts.insert(
+            "parts".into(),
+            "muxtra-efi,muxtra-root-a,muxtra-home".into(),
+        );
+        let disk = |facts: &BTreeMap<String, String>| {
+            report(&m, &p, &seen(), facts)
+                .into_iter()
+                .find(|c| c.name == "Disk")
+                .unwrap()
+        };
+        assert_eq!(disk(&facts).status, Status::Pass);
+        assert!(
+            disk(&facts)
+                .detail
+                .ends_with("slot A only (this drive has no room for B)")
+        );
+        facts.insert("parts".into(), "muxtra-efi,muxtra-home".into());
+        assert_eq!(disk(&facts).status, Status::Fail);
+    }
+
+    #[test]
     fn no_ssh_stops_early() {
         let (m, p) = setup(AGENT_BOX);
         let checks = report(
@@ -489,7 +525,7 @@ mod wifi_tests {
         .unwrap();
         let facts = parse_facts(
             "state\trunning\nfailed\t\nrunning\t20\nservice:ssh\tactive\nservice:tailscaled\tactive\n\
-             service:iwd\tinactive\nwifi-networks\t0\nslots\t4\nsudo\tnopass\n",
+             service:iwd\tinactive\nwifi-networks\t0\nparts\tmuxtra-efi,muxtra-root-a,muxtra-root-b,muxtra-home\nsudo\tnopass\n",
         );
         let seen = Observed {
             boot_seconds: Some(20),
