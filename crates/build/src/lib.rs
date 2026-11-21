@@ -10,6 +10,7 @@ use std::fmt;
 pub mod check;
 pub mod disk;
 pub mod hardware;
+pub mod tailscale;
 pub mod wifi;
 
 /// The script that runs inside the builder VM.

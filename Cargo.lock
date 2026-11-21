@@ -316,6 +316,7 @@ version = "0.1.0"
 dependencies = [
  "muxtra-manifest",
  "pbkdf2",
+ "serde_json",
  "sha1",
 ]
 
