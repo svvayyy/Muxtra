@@ -13,6 +13,8 @@ pub enum State {
         name: String,
         /// Its Tailscale addresses, IPv4 first.
         ips: Vec<String>,
+        /// Which tailnet it joined, so a wrong account is easy to spot.
+        tailnet: String,
     },
     /// Signed in, but the tailnet admin has to approve the Mac first.
     NeedsApproval,
@@ -43,7 +45,11 @@ pub fn state(status_json: &str) -> Result<State, String> {
                 })
                 .unwrap_or_default();
             ips.sort_by_key(|ip| ip.contains(':'));
-            State::SignedIn { name, ips }
+            let tailnet = v["CurrentTailnet"]["Name"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string();
+            State::SignedIn { name, ips, tailnet }
         }
         "NeedsMachineAuth" => State::NeedsApproval,
         "NeedsLogin" => State::NeedsLogin,
@@ -79,12 +85,14 @@ mod tests {
     fn signed_in_status_gives_name_and_ipv4_first() {
         let json = r#"{"BackendState":"Running","AuthURL":"",
             "TailscaleIPs":["fd7a:115c:a1e0::1","100.64.0.7"],
-            "Self":{"HostName":"agent-box","DNSName":"agent-box.example.ts.net."}}"#;
+            "Self":{"HostName":"agent-box","DNSName":"agent-box.example.ts.net."},
+            "CurrentTailnet":{"Name":"example.github"}}"#;
         assert_eq!(
             state(json).unwrap(),
             State::SignedIn {
                 name: "agent-box.example.ts.net".into(),
                 ips: vec!["100.64.0.7".into(), "fd7a:115c:a1e0::1".into()],
+                tailnet: "example.github".into(),
             }
         );
     }

@@ -250,9 +250,15 @@ fn ssh_problem(mac: &Mac, stderr: &str) -> String {
 fn report(name: &str, mac: &Mac, state: State, json: bool) -> Result<(), Failure> {
     let o = style::out();
     match state {
-        State::SignedIn { name: dns, ips } => {
+        State::SignedIn {
+            name: dns,
+            ips,
+            tailnet,
+        } => {
             if json {
-                print_json(serde_json::json!({ "state": "signed-in", "name": dns, "ips": ips }));
+                print_json(
+                    serde_json::json!({ "state": "signed-in", "name": dns, "ips": ips, "tailnet": tailnet }),
+                );
                 return Ok(());
             }
             let place = match (dns.is_empty(), ips.first()) {
@@ -266,6 +272,15 @@ fn report(name: &str, mac: &Mac, state: State, json: bool) -> Result<(), Failure
                 o.paint(Role::Ok, "✓"),
                 o.paint(Role::Value, name)
             );
+            if !tailnet.is_empty() {
+                println!(
+                    "{}",
+                    o.rich(
+                        Role::Dim,
+                        &format!("Tailnet: {tailnet}. Only devices signed in to this same tailnet can reach it.")
+                    )
+                );
+            }
             let short = dns.split('.').next().unwrap_or(name);
             if !short.is_empty() {
                 println!(
