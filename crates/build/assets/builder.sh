@@ -231,6 +231,46 @@ ExecStart=
 ExecStart=/usr/lib/systemd/systemd-networkd-wait-online --any --timeout=15
 EOF
 
+if [ "$DEBUG_LOGS" = 1 ]; then
+  # Debug builds save logs to the boot partition every minute, where macOS
+  # can read them after a restart.
+  cat > "$TARGET/usr/local/sbin/muxtra-save-logs" <<'EOF'
+#!/bin/sh
+d=/boot/efi/muxtra-logs
+mkdir -p "$d"
+{
+  date; uname -a; echo
+  ip -br addr; echo
+  iw reg get 2>&1; echo
+  iwctl station wlan0 show 2>&1; iwctl known-networks list 2>&1; echo
+  journalctl -b -u iwd -u systemd-networkd --no-pager 2>&1 | tail -200; echo
+  dmesg 2>&1 | grep -iE 'brcm|wlan|cfg80211|ieee80211|firmware' | tail -150
+} > "$d/latest.txt" 2>&1
+journalctl -b --no-pager > "$d/journal.txt" 2>&1
+sync
+EOF
+  chmod 0755 "$TARGET/usr/local/sbin/muxtra-save-logs"
+  cat > "$TARGET/etc/systemd/system/muxtra-save-logs.service" <<'EOF'
+[Unit]
+Description=Save Muxtra debug logs to the boot partition
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/muxtra-save-logs
+EOF
+  cat > "$TARGET/etc/systemd/system/muxtra-save-logs.timer" <<'EOF'
+[Unit]
+Description=Save Muxtra debug logs every minute
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+
+[Install]
+WantedBy=timers.target
+EOF
+  in_target systemctl enable muxtra-save-logs.timer >/dev/null
+fi
 for service in "${START[@]}"; do
   in_target systemctl enable "$service" >/dev/null
 done

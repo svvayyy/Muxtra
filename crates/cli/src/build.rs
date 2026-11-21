@@ -115,6 +115,8 @@ pub fn prepare(manifest: &Path) -> Result<Prepared, Failure> {
             password_hash,
             wifi: secrets.wifi,
             wifi_country: wifi_country(),
+            // Hidden switch for testing on Macs that are not online yet.
+            debug_logs: std::env::var_os("MUXTRA_DEBUG_LOGS").is_some_and(|v| v == "1"),
         },
     )?;
     Ok(Prepared {

@@ -86,6 +86,9 @@ pub struct Inputs {
     /// Two-letter country for Wi-Fi rules (like "US"), from the Mac running
     /// the build. Some Broadcom chips only connect once it is set.
     pub wifi_country: Option<String>,
+    /// Save logs to the boot partition every minute, for debugging on
+    /// Macs that cannot be reached over the network yet.
+    pub debug_logs: bool,
 }
 
 /// Works out every setting for the builder.
@@ -239,6 +242,7 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
         .filter(|c| c.len() == 2 && c.chars().all(|ch| ch.is_ascii_uppercase()))
         .unwrap_or("");
     config.push_str(&format!("WIFI_COUNTRY={}\n", quote(country)));
+    config.push_str(&format!("DEBUG_LOGS={}\n", quote(flag(inputs.debug_logs))));
     config.push_str(&format!("WIFI_FILES=({})\n", quote_list(&wifi_files)));
     config.push_str(&format!("WIFI_CONFIGS=({})\n", quote_list(&wifi_configs)));
 
@@ -645,6 +649,7 @@ mod tests {
             "WIFI_FILES",
             "WIFI_CONFIGS",
             "WIFI_COUNTRY",
+            "DEBUG_LOGS",
         ] {
             assert!(
                 BUILDER_SH.contains(&format!("${var}"))
@@ -660,15 +665,17 @@ mod country_tests {
     use super::*;
 
     #[test]
-    fn wifi_country_reaches_the_builder() {
+    fn wifi_country_and_debug_logs_reach_the_builder() {
         let m = Manifest::parse(include_str!("../../../starters/agent-box.toml")).unwrap();
         let mut inputs = Inputs {
             ssh_keys: vec!["ssh-ed25519 AAAA t".into()],
             wifi_country: Some("US".into()),
+            debug_logs: true,
             ..Default::default()
         };
         let p = plan(&m, &inputs).unwrap();
         assert!(p.config_sh.contains("WIFI_COUNTRY='US'\n"));
+        assert!(p.config_sh.contains("DEBUG_LOGS='1'\n"));
         assert!(p.packages.iter().any(|x| x == "iw"));
         inputs.wifi_country = Some("usa; rm -rf /".into());
         assert!(
