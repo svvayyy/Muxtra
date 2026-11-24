@@ -209,6 +209,33 @@ pub fn run(args: NewArgs) -> Result<(), Failure> {
         Some((starter.default_name(), name.as_str())),
     );
     files::set_value(&mut doc, "system", "mac", mac.as_str().into(), None);
+    // Leave out Thunderbolt networking on models where it cannot work.
+    let no_thunderbolt = muxtra_build::hardware::no_thunderbolt(mac.as_str()).filter(|_| {
+        doc["modules"]["network"]
+            .as_array()
+            .is_some_and(|a| a.iter().any(|v| v.as_str() == Some("thunderbolt")))
+    });
+    if no_thunderbolt.is_some() {
+        let kept: toml_edit::Array = doc["modules"]["network"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str())
+                    .filter(|v| *v != "thunderbolt")
+                    .collect()
+            })
+            .unwrap_or_default();
+        files::set_value(
+            &mut doc,
+            "modules",
+            "network",
+            kept.into(),
+            Some((
+                "thunderbolt: a rescue cable to another Mac",
+                "no thunderbolt: this Mac's chip has no Linux driver",
+            )),
+        );
+    }
     if hash.is_some() {
         files::set_value(&mut doc, "user", "password", true.into(), None);
     }
@@ -332,6 +359,15 @@ pub fn run(args: NewArgs) -> Result<(), Failure> {
                 o.rich(Role::Dim, ". Add a network with `muxtra wifi add`.")
             ),
         }
+    }
+    if let Some(why) = no_thunderbolt {
+        println!(
+            "  {}",
+            o.paint(
+                Role::Dim,
+                &format!("Thunderbolt networking is left out: {why}.")
+            )
+        );
     }
     println!(
         "  {} {}",

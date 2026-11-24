@@ -1,7 +1,7 @@
 //! End-to-end tests: run the real `muxtra` binary like an agent would, with
 //! no terminal attached, and check what it writes and says.
 
-use muxtra_manifest::{Manifest, Remote};
+use muxtra_manifest::{Manifest, Network, Remote};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -67,11 +67,35 @@ fn new_with_defaults_writes_agent_box() {
         raw.contains("mac  = \"iMac14,4\"          # Mac model"),
         "{raw}"
     );
+    // This iMac's Thunderbolt chip has no Linux driver, so it is left out.
+    assert_eq!(m.modules.network, vec![Network::Ethernet, Network::Wifi]);
+    assert!(
+        raw.contains("# no thunderbolt: this Mac's chip has no Linux driver"),
+        "{raw}"
+    );
     let said = text(&out);
+    assert!(
+        said.contains("Thunderbolt networking is left out"),
+        "{said}"
+    );
     assert!(said.contains("No one was at the keyboard"), "{said}");
     assert!(said.contains("muxtra passwd"), "{said}");
     assert!(said.contains("includes SFTP"), "{said}");
     assert!(!tmp.path().join("muxtra.secrets").exists());
+}
+
+#[test]
+fn new_keeps_thunderbolt_where_it_works() {
+    let tmp = tempfile::tempdir().unwrap();
+    let out = muxtra(tmp.path(), &["new", "--mac", "MacBookPro13,3"], None);
+    assert!(out.status.success(), "{}", text(&out));
+    let (raw, m) = read_manifest(tmp.path());
+    assert!(m.modules.network.contains(&Network::Thunderbolt), "{raw}");
+    assert!(
+        raw.contains("# thunderbolt: a rescue cable to another Mac"),
+        "{raw}"
+    );
+    assert!(!text(&out).contains("left out"));
 }
 
 #[test]
