@@ -10,6 +10,11 @@
   <meta property="og:description" content="A Linux base for Intel Macs, built for AI agents. In development.">
   <meta property="og:url" content="https://muxtra.dev/">
   <meta property="og:type" content="website">
+  <meta property="og:image" content="https://muxtra.dev/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Muxtra: a Linux base for Intel Macs, built for AI agents. A glowing eclipse beside the name.">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="favicon.svg?v=c998ca961f" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png?v=fdb6f363e7">
   <link rel="stylesheet" href="styles.css?v=0352d7ea1d">
@@ -70,40 +75,41 @@
     </section>
 
     <section class="how" id="how" aria-labelledby="how-title">
-      <h2 class="title" id="how-title">How it should feel</h2>
-      <p class="section-lede">Describe the system you want. Muxtra builds it, boots it, and tells you what works.</p>
+      <h2 class="title" id="how-title">How it works</h2>
+      <p class="section-lede">Describe the system you want. Muxtra builds it, puts it on a Mac, and tells you what works.</p>
       <div class="panes">
         <figure class="pane">
           <figcaption>muxtra.toml</figcaption>
 <pre><code><span class="c"># One file describes the whole system</span>
 <span class="k">[system]</span>
 name <span class="o">=</span> <span class="s">"agent-box"</span>
-mac  <span class="o">=</span> <span class="s">"MacBookPro15,1"</span>  <span class="c"># 15-inch, 2018, T2</span>
+mac  <span class="o">=</span> <span class="s">"MacBookPro13,3"</span>  <span class="c"># 15-inch, 2016, T1</span>
 
 <span class="k">[modules]</span>
-network <span class="o">=</span> [<span class="s">"wifi"</span>, <span class="s">"tailscale"</span>]
-access  <span class="o">=</span> <span class="s">"ssh"</span>
+network <span class="o">=</span> [<span class="s">"wifi"</span>, <span class="s">"thunderbolt"</span>]
+remote  <span class="o">=</span> [<span class="s">"ssh"</span>, <span class="s">"mosh"</span>, <span class="s">"tailscale"</span>]
 tools   <span class="o">=</span> [<span class="s">"git"</span>, <span class="s">"node"</span>]
 
 <span class="k">[boot]</span>
-start  <span class="o">=</span> [<span class="s">"tailscaled"</span>, <span class="s">"sshd"</span>]
+start  <span class="o">=</span> [<span class="s">"sshd"</span>, <span class="s">"tailscaled"</span>]
 locked <span class="o">=</span> [<span class="s">"bootloader"</span>, <span class="s">"kernel"</span>]</code></pre>
         </figure>
         <figure class="pane">
           <figcaption>terminal</figcaption>
-<pre><code><span class="p">$</span> muxtra check
-<span class="ok">✓</span> Built in 48s
-<span class="ok">✓</span> Booted in a virtual machine in 2.1s
-<span class="ok">✓</span> Wi-Fi driver loaded for MacBookPro15,1
-<span class="ok">✓</span> Keyboard and trackpad found through the T2 bridge
-<span class="ok">✓</span> SSH is reachable on port 22
-<span class="warn">!</span> Suspend is not tested on this model yet
+<pre><code><span class="p">$</span> muxtra check --real
+<span class="ok">✓</span> Boots        <span class="c">running for 40 min</span>
+<span class="ok">✓</span> Mac model    <span class="c">MacBookPro13,3</span>
+<span class="ok">✓</span> Services     <span class="c">11 running, none failed</span>
+<span class="ok">✓</span> Wi-Fi        <span class="c">connected, -74 dBm</span>
+<span class="ok">✓</span> Tailscale    <span class="c">installed and signed in</span>
+<span class="ok">✓</span> Node         <span class="c">v26.13.1</span>
+<span class="ok">✓</span> Memory       <span class="c">498 MB used of 15.5 GB</span>
+<span class="warn">!</span> Thunderbolt  <span class="c">ready, plug in a cable to test</span>
 
-<span class="hl">Ready to flash.</span> If it fails to boot, the
-last good build comes back on its own.</code></pre>
+<span class="hl">13 passed, 1 untested.</span> Took 0:03.</code></pre>
         </figure>
       </div>
-      <p class="note">Concept preview. The real manifest format and check output are still being designed.</p>
+      <p class="note">Real output from a 15-inch 2016 MacBook Pro running Muxtra from a USB stick. Some rows are left out to fit.</p>
     </section>
 
     <section class="macs" id="macs" aria-labelledby="macs-title">
@@ -111,15 +117,15 @@ last good build comes back on its own.</code></pre>
       <ul>
         <li>
           <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" class="moon-dark"/><path d="M16 5a11 11 0 0 1 0 22a6 11 0 0 0 0-22z" class="moon-lit"/></svg>
-          <span class="status next">Up first</span>
+          <span class="status next">Testing now</span>
           <h3>Intel Macs without a T chip</h3>
-          <p>Most iMacs, Mac minis, and MacBooks through 2017, plus the 2019 iMac.</p>
+          <p>Most iMacs, Mac minis, and MacBooks through 2017, plus the 2019 iMac. First up: the 21.5-inch iMac from 2014.</p>
         </li>
         <li>
-          <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" class="moon-dark"/></svg>
-          <span class="status">Planned</span>
+          <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" class="moon-lit"/></svg>
+          <span class="status next">Boots</span>
           <h3>T1 Macs</h3>
-          <p>The 2016 and 2017 MacBook Pro with Touch Bar.</p>
+          <p>The 2016 and 2017 MacBook Pro with Touch Bar. The 15-inch 2016 model boots from USB, joins Wi-Fi on its own, and signs in to Tailscale.</p>
         </li>
         <li>
           <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" class="moon-dark"/></svg>
@@ -156,8 +162,8 @@ last good build comes back on its own.</code></pre>
           <path id="orbit-path" class="orbit-path" d=""/>
           <circle cx="0" cy="0" r="62" fill="url(#sun-glow)"/>
           <circle cx="0" cy="0" r="15" fill="url(#sun-core)"/>
-          <g class="stop now" data-ea="0.0"><circle r="6"/><text y="24">1</text></g>
-          <g class="stop" data-ea="0.785"><circle r="4.5"/><text y="24">2</text></g>
+          <g class="stop" data-ea="0.0"><circle r="6"/><text y="24">1</text></g>
+          <g class="stop now" data-ea="0.785"><circle r="4.5"/><text y="24">2</text></g>
           <g class="stop" data-ea="1.571"><circle r="4.5"/><text y="24">3</text></g>
           <g class="stop" data-ea="2.356"><circle r="4.5"/><text y="24">4</text></g>
           <g class="stop goal" data-ea="3.1416"><circle r="6"/><text y="24">1.0</text></g>
@@ -169,15 +175,15 @@ last good build comes back on its own.</code></pre>
       </div>
 
       <ol class="phases">
-        <li class="now">
-          <span class="phase-num">Phase 1 <em>Now</em></span>
+        <li>
+          <span class="phase-num">Phase 1 <em>Done</em></span>
           <h3>Skeleton</h3>
           <p>One manifest, swappable modules, and a check that boots everything in a virtual machine.</p>
         </li>
-        <li>
-          <span class="phase-num">Phase 2</span>
+        <li class="now">
+          <span class="phase-num">Phase 2 <em>Now</em></span>
           <h3>Real Macs</h3>
-          <p>USB boot on real hardware. Macs without a T chip first, then T1, then T2.</p>
+          <p>USB boot on real hardware, with Wi-Fi and Tailscale. Working on a T1 MacBook Pro, with Macs without a T chip and T2 Macs next.</p>
         </li>
         <li>
           <span class="phase-num">Phase 3</span>
