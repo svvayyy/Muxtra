@@ -521,11 +521,8 @@ locked = ["bootloader", "kernel"]
     #[test]
     fn starters_are_valid() {
         for (name, text) in [
-            (
-                "agent-box",
-                include_str!("../../../starters/agent-box.toml"),
-            ),
-            ("blank", include_str!("../../../starters/blank.toml")),
+            ("agent", include_str!("../../../starters/agent.toml")),
+            ("base", include_str!("../../../starters/base.toml")),
         ] {
             if let Err(e) = Manifest::parse(text) {
                 panic!("starter {name} is invalid: {e}");

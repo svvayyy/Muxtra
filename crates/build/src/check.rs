@@ -523,7 +523,7 @@ mod tests {
     use super::*;
     use crate::{Inputs, plan};
 
-    const AGENT_BOX: &str = include_str!("../../../starters/agent-box.toml");
+    const AGENT: &str = include_str!("../../../starters/agent.toml");
 
     fn setup(text: &str) -> (Manifest, Plan) {
         let m = Manifest::parse(text).unwrap();
@@ -559,7 +559,7 @@ mod tests {
 
     #[test]
     fn healthy_agent_box() {
-        let (m, p) = setup(AGENT_BOX);
+        let (m, p) = setup(AGENT);
         let checks = report(&m, &p, &seen(), &healthy());
         let names: Vec<&str> = checks.iter().map(|c| c.name.as_str()).collect();
         assert_eq!(
@@ -597,7 +597,7 @@ mod tests {
 
     #[test]
     fn failures_are_explained() {
-        let (m, p) = setup(AGENT_BOX);
+        let (m, p) = setup(AGENT);
         let mut facts = healthy();
         facts.insert("state".into(), "degraded".into());
         facts.insert("failed".into(), "tailscaled.service".into());
@@ -647,7 +647,7 @@ mod tests {
 
     #[test]
     fn real_mac_report() {
-        let (m, p) = setup(&AGENT_BOX.replace("iMac14,4", "MacBookPro13,3"));
+        let (m, p) = setup(&AGENT.replace("iMac14,4", "MacBookPro13,3"));
         let checks = report(&m, &p, &real_seen(), &real_mac());
         let row = |n: &str| checks.iter().find(|c| c.name == n).unwrap().clone();
         assert_eq!(row("Boots").detail, "running for 37 min");
@@ -668,7 +668,7 @@ mod tests {
 
     #[test]
     fn real_mac_problems() {
-        let (m, p) = setup(&AGENT_BOX.replace("iMac14,4", "MacBookPro14,3"));
+        let (m, p) = setup(&AGENT.replace("iMac14,4", "MacBookPro14,3"));
         let mut facts = real_mac();
         facts.insert("wifi-ssid".into(), "".into());
         facts.insert("tb-domains".into(), "0".into());
@@ -685,7 +685,7 @@ mod tests {
 
     #[test]
     fn a_drive_without_room_for_slot_b_still_passes() {
-        let (m, p) = setup(AGENT_BOX);
+        let (m, p) = setup(AGENT);
         let mut facts = healthy();
         facts.insert(
             "parts".into(),
@@ -709,7 +709,7 @@ mod tests {
 
     #[test]
     fn no_ssh_stops_early() {
-        let (m, p) = setup(AGENT_BOX);
+        let (m, p) = setup(AGENT);
         let checks = report(
             &m,
             &p,
@@ -727,7 +727,7 @@ mod tests {
 
     #[test]
     fn probe_asks_about_what_the_manifest_wants() {
-        let (m, _) = setup(AGENT_BOX);
+        let (m, _) = setup(AGENT);
         let script = probe_script(&m);
         assert!(script.contains("fact service:ssh \"$(systemctl is-active 'ssh'"));
         assert!(script.contains("fact service:tailscaled"));
@@ -756,7 +756,7 @@ mod wifi_tests {
 
     #[test]
     fn iwd_not_running_fails_services() {
-        let m = Manifest::parse(include_str!("../../../starters/agent-box.toml")).unwrap();
+        let m = Manifest::parse(include_str!("../../../starters/agent.toml")).unwrap();
         let p = plan(
             &m,
             &Inputs {

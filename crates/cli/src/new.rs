@@ -7,38 +7,38 @@ use muxtra_manifest::{FILE_NAME, Manifest, Remote, check_host_name, is_mac_model
 use std::fs;
 use std::path::PathBuf;
 
-const AGENT_BOX: &str = include_str!("../../../starters/agent-box.toml");
-const BLANK: &str = include_str!("../../../starters/blank.toml");
+const AGENT: &str = include_str!("../../../starters/agent.toml");
+const BASE: &str = include_str!("../../../starters/base.toml");
 
 /// What to start from.
 #[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Starter {
     /// A headless Mac for you and your agents (the default)
-    AgentBox,
+    Agent,
     /// Just the Muxtra base
-    Blank,
+    Base,
 }
 
 impl Starter {
     fn text(self) -> &'static str {
         match self {
-            Starter::AgentBox => AGENT_BOX,
-            Starter::Blank => BLANK,
+            Starter::Agent => AGENT,
+            Starter::Base => BASE,
         }
     }
 
     fn label(self) -> &'static str {
         match self {
-            Starter::AgentBox => "agent-box",
-            Starter::Blank => "blank",
+            Starter::Agent => "agent",
+            Starter::Base => "base",
         }
     }
 
     /// The machine name the starter file is written with.
     fn default_name(self) -> &'static str {
         match self {
-            Starter::AgentBox => "agent-box",
-            Starter::Blank => "muxtra",
+            Starter::Agent => "agent-box",
+            Starter::Base => "muxtra",
         }
     }
 }
@@ -49,7 +49,7 @@ pub struct NewArgs {
     #[arg(default_value = ".")]
     dir: PathBuf,
     /// What to start from
-    #[arg(long, value_enum, default_value_t = Starter::AgentBox)]
+    #[arg(long, value_enum, default_value_t = Starter::Agent)]
     starter: Starter,
     /// Machine name, like agent-box
     #[arg(long)]

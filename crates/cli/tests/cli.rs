@@ -46,7 +46,7 @@ fn read_manifest(dir: &Path) -> (String, Manifest) {
 }
 
 #[test]
-fn new_with_defaults_writes_agent_box() {
+fn new_with_defaults_writes_the_agent_starter() {
     let tmp = tempfile::tempdir().unwrap();
     let out = muxtra(tmp.path(), &["new", "--mac", "iMac14,4"], None);
     assert!(out.status.success(), "{}", text(&out));
@@ -99,14 +99,14 @@ fn new_keeps_thunderbolt_where_it_works() {
 }
 
 #[test]
-fn new_blank_with_a_name() {
+fn new_base_with_a_name() {
     let tmp = tempfile::tempdir().unwrap();
     let out = muxtra(
         tmp.path(),
         &[
             "new",
             "--starter",
-            "blank",
+            "base",
             "--name",
             "lab",
             "--mac",

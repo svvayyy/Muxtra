@@ -456,8 +456,8 @@ pub fn base64(data: &[u8]) -> String {
 mod tests {
     use super::*;
 
-    const AGENT_BOX: &str = include_str!("../../../starters/agent-box.toml");
-    const BLANK: &str = include_str!("../../../starters/blank.toml");
+    const AGENT: &str = include_str!("../../../starters/agent.toml");
+    const BASE: &str = include_str!("../../../starters/base.toml");
     const KEY: &str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample test@example";
 
     fn inputs() -> Inputs {
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn agent_box_plan() {
-        let p = plan(&manifest(AGENT_BOX), &inputs()).unwrap();
+        let p = plan(&manifest(AGENT), &inputs()).unwrap();
         assert_eq!(p.node_major, Some(NODE_LTS));
         for pkg in ["openssh-server", "mosh", "git", "iwd", "linux-image-amd64"] {
             assert!(p.packages.iter().any(|x| x == pkg), "missing {pkg}");
@@ -494,8 +494,8 @@ mod tests {
     }
 
     #[test]
-    fn blank_plan_is_small() {
-        let p = plan(&manifest(BLANK), &inputs()).unwrap();
+    fn base_plan_is_small() {
+        let p = plan(&manifest(BASE), &inputs()).unwrap();
         assert_eq!(p.node_major, None);
         assert!(!p.packages.iter().any(|x| x == "mosh"));
         assert!(p.config_sh.contains("WITH_TAILSCALE='0'\n"));
@@ -513,21 +513,21 @@ mod tests {
 
     #[test]
     fn tools_are_package_names() {
-        let text = AGENT_BOX.replace(
+        let text = AGENT.replace(
             "tools   = [\"git\", \"node\"]",
             "tools   = [\"git\", \"ripgrep\", \"g++\"]",
         );
         let p = plan(&manifest(&text), &inputs()).unwrap();
         assert!(p.packages.iter().any(|x| x == "ripgrep"));
         assert!(p.packages.iter().any(|x| x == "g++"));
-        let bad = AGENT_BOX.replace("\"git\", \"node\"", "\"git\", \"rm -rf /\"");
+        let bad = AGENT.replace("\"git\", \"node\"", "\"git\", \"rm -rf /\"");
         let err = plan(&manifest(&bad), &inputs()).unwrap_err();
         assert!(err.0.contains("not a Debian package name"), "{err}");
     }
 
     #[test]
     fn unbuildable_modules_say_so() {
-        let text = AGENT_BOX.replace("\"tailscale\"]", "\"tailscale\", \"netbird\"]");
+        let text = AGENT.replace("\"tailscale\"]", "\"tailscale\", \"netbird\"]");
         let err = plan(&manifest(&text), &inputs()).unwrap_err();
         assert!(
             err.0.contains("netbird") && err.0.contains("cannot be built yet"),
@@ -537,7 +537,7 @@ mod tests {
 
     #[test]
     fn password_needs_a_hash() {
-        let text = AGENT_BOX.replace("password = false", "password = true");
+        let text = AGENT.replace("password = false", "password = true");
         let err = plan(&manifest(&text), &inputs()).unwrap_err();
         assert!(err.0.contains("muxtra passwd"), "{err}");
         let with_hash = Inputs {
@@ -550,8 +550,8 @@ mod tests {
 
     #[test]
     fn fingerprint_follows_the_settings() {
-        let a = plan(&manifest(AGENT_BOX), &inputs()).unwrap();
-        let b = plan(&manifest(BLANK), &inputs()).unwrap();
+        let a = plan(&manifest(AGENT), &inputs()).unwrap();
+        let b = plan(&manifest(BASE), &inputs()).unwrap();
         assert_eq!(fingerprint(&a), fingerprint(&a.clone()));
         assert_ne!(fingerprint(&a), fingerprint(&b));
         let other_key = Inputs {
@@ -560,7 +560,7 @@ mod tests {
         };
         assert_ne!(
             fingerprint(&a),
-            fingerprint(&plan(&manifest(AGENT_BOX), &other_key).unwrap())
+            fingerprint(&plan(&manifest(AGENT), &other_key).unwrap())
         );
     }
 
@@ -667,7 +667,7 @@ mod country_tests {
 
     #[test]
     fn wifi_country_and_debug_logs_reach_the_builder() {
-        let m = Manifest::parse(include_str!("../../../starters/agent-box.toml")).unwrap();
+        let m = Manifest::parse(include_str!("../../../starters/agent.toml")).unwrap();
         let mut inputs = Inputs {
             ssh_keys: vec!["ssh-ed25519 AAAA t".into()],
             wifi_country: Some("US".into()),

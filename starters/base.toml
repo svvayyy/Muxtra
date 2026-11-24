@@ -1,5 +1,5 @@
 # Muxtra manifest: this one file describes the whole system.
-# Starter: blank. Just the Muxtra base: Debian, Mac drivers, networking and SSH.
+# Starter: base. Just the Muxtra base: Debian, Mac drivers, networking and SSH.
 # Run `muxtra check` after any change to see what works.
 
 [system]
