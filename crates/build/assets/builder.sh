@@ -197,6 +197,26 @@ EOF
   in_target systemctl enable muxtra-ssh-host-keys.service >/dev/null
 fi
 
+# Coding agents, installed for the user with their official installers.
+# They update themselves later, in the user's own home folder.
+for agent in "${AGENTS[@]}"; do
+  case "$agent" in
+    claude-code) url=https://claude.ai/install.sh; run=bash; cmd=claude ;;
+    codex) url=https://chatgpt.com/codex/install.sh; run=sh; cmd=codex ;;
+    *) echo "Muxtra does not know how to install \"$agent\"." >&2; exit 1 ;;
+  esac
+  if ! in_target runuser -u "$USER_NAME" -- env HOME="/home/$USER_NAME" \
+      PATH="/home/$USER_NAME/.local/bin:/usr/local/bin:/usr/bin:/bin" \
+      sh -c "curl -fsSL $url | $run" > /tmp/agent-install.log 2>&1 \
+      || [ ! -e "$TARGET/home/$USER_NAME/.local/bin/$cmd" ]; then
+    tail -5 /tmp/agent-install.log >&2
+    echo "Installing $cmd failed. The builder downloads it from the internet: check this Mac's connection and build again." >&2
+    exit 1
+  fi
+  # Commands run over SSH do not search ~/.local/bin, so link it.
+  ln -sf "/home/$USER_NAME/.local/bin/$cmd" "$TARGET/usr/local/bin/$cmd"
+done
+
 # Networking: networkd for cables, Avahi so `name.local` works.
 install -d "$TARGET/etc/systemd/network"
 if [ "$WITH_ETHERNET" = 1 ]; then

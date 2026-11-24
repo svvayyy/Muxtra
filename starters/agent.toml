@@ -18,6 +18,7 @@ ssh_keys = ["auto"]        # "auto" finds your SSH key, or makes one
 network = ["ethernet", "wifi", "thunderbolt"]   # thunderbolt: a rescue cable to another Mac
 remote  = ["ssh", "mosh", "tailscale"]          # ssh includes SFTP
 tools   = ["git", "node"]
+agents  = ["claude-code", "codex"]              # sign in with `muxtra claude login`, `muxtra codex login`
 
 [boot]
 start  = ["sshd", "tailscaled"]    # background services started at boot

@@ -4,7 +4,7 @@
 //! Nothing here touches the disk, the network, or a VM. `muxtra build` in
 //! the CLI does that. Keeping this part pure makes it easy to test.
 
-use muxtra_manifest::{Manifest, Network, Remote};
+use muxtra_manifest::{Agent, Manifest, Network, Remote};
 use std::fmt;
 
 pub mod agents;
@@ -141,6 +141,16 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
     if has(Remote::Wireguard) {
         add("wireguard-tools");
     }
+    let agents = &manifest.modules.agents;
+    if !agents.is_empty() {
+        // The official installers download over HTTPS.
+        add("curl");
+        add("ca-certificates");
+    }
+    if agents.contains(&Agent::Codex) {
+        // Codex runs the commands it suggests in a bubblewrap sandbox.
+        add("bubblewrap");
+    }
 
     let mut node_major = None;
     for tool in &manifest.modules.tools {
@@ -168,6 +178,7 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
 
     let mut label: Vec<String> = remote.iter().map(|r| remote_name(*r).to_string()).collect();
     label.extend(manifest.modules.tools.iter().cloned());
+    label.extend(manifest.modules.agents.iter().map(|a| a.name().to_string()));
     let modules_label = if label.is_empty() {
         "none".to_string()
     } else {
@@ -212,6 +223,13 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
     config.push_str(&format!("SSH_KEYS=({})\n", quote_list(&inputs.ssh_keys)));
     config.push_str(&format!("START=({})\n", quote_list(&start)));
     config.push_str(&format!("PACKAGES=({})\n", quote_list(&packages)));
+    let agent_ids: Vec<String> = manifest
+        .modules
+        .agents
+        .iter()
+        .map(|a| a.id().to_string())
+        .collect();
+    config.push_str(&format!("AGENTS=({})\n", quote_list(&agent_ids)));
     let hw_packages: Vec<String> = hardware::packages(&manifest.system.mac)
         .into_iter()
         .map(str::to_string)
@@ -491,7 +509,34 @@ mod tests {
             p.config_sh
         );
         assert!(p.config_sh.contains(&format!("SSH_KEYS=('{KEY}')\n")));
-        assert_eq!(p.modules_label, "ssh, mosh, tailscale, git, node");
+        assert_eq!(
+            p.modules_label,
+            "ssh, mosh, tailscale, git, node, Claude Code, Codex"
+        );
+    }
+
+    #[test]
+    fn agent_starter_installs_both_agents() {
+        let m = Manifest::parse(AGENT).unwrap();
+        let p = plan(
+            &m,
+            &Inputs {
+                ssh_keys: vec!["ssh-ed25519 AAAA test".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(
+            p.config_sh.contains("AGENTS=('claude-code' 'codex')"),
+            "{}",
+            p.config_sh
+        );
+        assert!(p.config_sh.contains("'bubblewrap'"));
+        assert!(
+            p.modules_label.ends_with("Claude Code, Codex"),
+            "{}",
+            p.modules_label
+        );
     }
 
     #[test]
