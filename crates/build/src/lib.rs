@@ -123,7 +123,7 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
     if t2 && network.contains(&Network::Wifi) && inputs.apple_firmware.is_none() {
         let model = hardware::lookup(&manifest.system.mac).map_or("This Mac", |m| m.name);
         return Err(PlanError(format!(
-            "The {model}'s Wi-Fi needs Apple's firmware, which only its macOS has. While it still runs macOS, run `muxtra firmware --from <that Mac>`, then build again."
+            "Wi-Fi on this Mac ({model}) needs Apple's firmware, which only its macOS has. While it still runs macOS, run `muxtra firmware --from <that Mac>`, then build again."
         )));
     }
     if has(Remote::Ssh) && inputs.ssh_keys.is_empty() {
