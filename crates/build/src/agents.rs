@@ -39,7 +39,9 @@ pub fn login_command(agent: Agent) -> String {
         // Prints a link and a one-time code to enter there.
         Agent::Codex => "codex login --device-auth",
     };
-    format!("{PATH}; exec {login} 2>&1")
+    // A sign-in left behind (say the SSH connection dropped) stops on its
+    // own when its link or code would have expired anyway.
+    format!("{PATH}; exec timeout 900 {login} 2>&1")
 }
 
 /// Reads the output of `status_command`.
@@ -180,5 +182,6 @@ mod tests {
             assert!(login_command(agent).contains("$HOME/.local/bin"));
         }
         assert!(login_command(Agent::Codex).contains("--device-auth"));
+        assert!(login_command(Agent::ClaudeCode).contains("timeout 900 claude auth login"));
     }
 }
