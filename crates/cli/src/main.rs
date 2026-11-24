@@ -41,7 +41,7 @@ enum Command {
     New(new::NewArgs),
     /// Build a system image from muxtra.toml
     Build(build::BuildArgs),
-    /// Boot the image in a virtual machine and report what works
+    /// Report what works, in a virtual machine or on the real Mac
     Check(check::CheckArgs),
     /// Put Muxtra on a Mac, over a USB stick or a cable
     #[command(alias = "flash")]
