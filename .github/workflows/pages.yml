@@ -19,10 +19,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # Upload and deploy run as separate jobs: in one job, deploy-pages can look
+  # for the artifact a moment before it is listed and fail with "No artifacts
+  # named github-pages" (actions/deploy-pages#451).
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -36,6 +36,13 @@ jobs:
         with:
           path: site
 
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
