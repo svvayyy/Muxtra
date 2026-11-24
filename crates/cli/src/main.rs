@@ -4,6 +4,7 @@
 //! friendly questions. With no keyboard (an agent, a script, CI) it never
 //! waits: it uses the defaults and prints what it chose.
 
+mod agents;
 mod build;
 mod check;
 mod files;
@@ -55,6 +56,10 @@ enum Command {
     Wifi(wifi::WifiArgs),
     /// Sign the Mac in to Tailscale, so you can reach it from anywhere
     Tailscale(tailscale::TailscaleArgs),
+    /// Sign Claude Code on the Mac in to your account
+    Claude(agents::AgentArgs),
+    /// Sign Codex on the Mac in to your account
+    Codex(agents::AgentArgs),
 }
 
 /// Where to find muxtra.toml.
@@ -95,6 +100,8 @@ fn main() -> ExitCode {
         Command::Passwd(args) => passwd::run(args),
         Command::Wifi(args) => wifi::run(args),
         Command::Tailscale(args) => tailscale::run(args),
+        Command::Claude(args) => agents::run(muxtra_manifest::Agent::ClaudeCode, args),
+        Command::Codex(args) => agents::run(muxtra_manifest::Agent::Codex, args),
         Command::Build(args) => build::run(args),
         Command::Check(args) => check::run(args),
         Command::Poof(args) => poof::run(args),

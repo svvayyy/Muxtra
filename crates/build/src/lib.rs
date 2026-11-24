@@ -7,6 +7,7 @@
 use muxtra_manifest::{Manifest, Network, Remote};
 use std::fmt;
 
+pub mod agents;
 pub mod check;
 pub mod disk;
 pub mod hardware;
