@@ -18,7 +18,7 @@ mod style;
 mod tailscale;
 mod wifi;
 
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use style::Role;
@@ -76,7 +76,20 @@ impl<E: std::fmt::Display> From<E> for Failure {
 }
 
 fn main() -> ExitCode {
-    let cli = Cli::parse();
+    let about = style::out().rich(
+        Role::Plain,
+        "A Linux base for Intel Macs, built for AI agents.\n\nStart with `muxtra new`, then `muxtra build`, `muxtra check` and `muxtra poof`.",
+    );
+    let matches = Cli::command()
+        .styles(style::help_styles())
+        .color(if style::colors_on() {
+            clap::ColorChoice::Always
+        } else {
+            clap::ColorChoice::Never
+        })
+        .long_about(about)
+        .get_matches();
+    let cli = Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     let result = match cli.command {
         Command::New(args) => new::run(args),
         Command::Passwd(args) => passwd::run(args),

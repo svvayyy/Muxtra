@@ -88,6 +88,37 @@ impl Painter {
     }
 }
 
+/// Colors for `--help` and usage errors, in the same palette: section
+/// headers in the starter color, commands and flags in the value color,
+/// placeholders like <MANIFEST> as explanations.
+pub fn help_styles() -> clap::builder::Styles {
+    use clap::builder::styling::{Ansi256Color, Color, RgbColor, Style, Styles};
+    let Some((theme, depth)) = out().colors else {
+        return Styles::plain();
+    };
+    let style = |role: Role| {
+        let (r, g, b) = rgb(theme, role);
+        Style::new().fg_color(Some(match depth {
+            Depth::TrueColor => Color::Rgb(RgbColor(r, g, b)),
+            Depth::Ansi256 => Color::Ansi256(Ansi256Color(nearest_256(r, g, b))),
+        }))
+    };
+    Styles::styled()
+        .header(style(Role::Accent).bold())
+        .usage(style(Role::Accent).bold())
+        .literal(style(Role::Value))
+        .placeholder(style(Role::Dim))
+        .valid(style(Role::Ok))
+        .invalid(style(Role::Warn))
+        .error(style(Role::Err).bold())
+        .context(style(Role::Dim))
+}
+
+/// Whether standard output gets colors (for `--help`).
+pub fn colors_on() -> bool {
+    out().colors.is_some()
+}
+
 /// The palette. Dark terminals get light pastels, light terminals get
 /// deeper shades of the same hues.
 fn rgb(theme: Theme, role: Role) -> (u8, u8, u8) {
