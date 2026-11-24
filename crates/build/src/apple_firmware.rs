@@ -19,6 +19,11 @@ const CHIP_FOLDERS: &[&str] = &[
     "C-4377__s-B3",
 ];
 
+/// The chip folders to copy from macOS.
+pub fn chip_folders() -> &'static [&'static str] {
+    CHIP_FOLDERS
+}
+
 /// macOS file extensions and what Linux calls them.
 const EXTENSIONS: &[(&str, &str)] = &[
     ("trx", "bin"),
@@ -102,6 +107,42 @@ pub fn linux_files(files: &[(String, Vec<u8>)]) -> Result<Vec<(String, Vec<u8>)>
     walk(&root, &mut Vec::new(), &mut out);
     out.sort_by(|a, b| a.0.cmp(&b.0));
     Ok(out)
+}
+
+/// Packs Linux firmware files into a plain tar archive for the builder.
+pub fn archive(files: &[(String, Vec<u8>)]) -> Vec<u8> {
+    let mut out = Vec::new();
+    for (name, data) in files {
+        let mut header = [0u8; 512];
+        header[..name.len().min(100)].copy_from_slice(&name.as_bytes()[..name.len().min(100)]);
+        header[100..108].copy_from_slice(b"0000644\0");
+        header[108..116].copy_from_slice(b"0000000\0");
+        header[116..124].copy_from_slice(b"0000000\0");
+        header[124..136].copy_from_slice(format!("{:011o}\0", data.len()).as_bytes());
+        header[136..148].copy_from_slice(b"00000000000\0");
+        header[156] = b'0';
+        header[257..263].copy_from_slice(b"ustar\0");
+        header[263..265].copy_from_slice(b"00");
+        header[148..156].copy_from_slice(b"        ");
+        let sum: u32 = header.iter().map(|b| u32::from(*b)).sum();
+        header[148..156].copy_from_slice(format!("{sum:06o}\0 ").as_bytes());
+        out.extend_from_slice(&header);
+        out.extend_from_slice(data);
+        out.resize(out.len().div_ceil(512) * 512, 0);
+    }
+    out.resize(out.len() + 1024, 0);
+    out
+}
+
+/// A short fingerprint of the packed firmware, so a change rebuilds.
+pub fn digest(archive: &[u8]) -> String {
+    // FNV-1a, 64 bit. Only used to notice changes, not for security.
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for byte in archive {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{hash:016x}")
 }
 
 /// Where every more specific file is the same, keeps just the general one.
@@ -208,6 +249,33 @@ mod tests {
         );
         let txt = out.iter().find(|(n, _)| n.ends_with(".txt")).unwrap();
         assert_eq!(txt.1, b"a=1\nb=2\n");
+    }
+
+    #[test]
+    fn archive_is_a_valid_tar() {
+        let files = vec![(
+            "brcmfmac4364b3-pcie.apple,bali.bin".to_string(),
+            b"abc".to_vec(),
+        )];
+        let tar = archive(&files);
+        assert_eq!(tar.len(), 512 + 512 + 1024);
+        assert_eq!(&tar[..34], b"brcmfmac4364b3-pcie.apple,bali.bin");
+        assert_eq!(&tar[257..262], b"ustar");
+        assert_eq!(&tar[512..515], b"abc");
+        let sum: u32 = tar[..512]
+            .iter()
+            .enumerate()
+            .map(|(i, b)| {
+                if (148..156).contains(&i) {
+                    32
+                } else {
+                    u32::from(*b)
+                }
+            })
+            .sum();
+        let stored = std::str::from_utf8(&tar[148..154]).unwrap();
+        assert_eq!(u32::from_str_radix(stored, 8).unwrap(), sum);
+        assert_ne!(digest(&tar), digest(&archive(&[])));
     }
 
     #[test]
