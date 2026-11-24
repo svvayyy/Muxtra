@@ -28,6 +28,10 @@ pub struct Mac {
 /// Every Intel Mac gets these.
 pub const COMMON_PACKAGES: &[&str] = &["intel-microcode", "firmware-brcm80211"];
 
+/// Broadcom's own Wi-Fi driver (`wl`), for the BCM4360 that the open
+/// drivers do not support. Built against the image's kernel at build time.
+const BROADCOM_WL: &[&str] = &["broadcom-sta-dkms", "linux-headers-amd64"];
+
 /// SPI keyboard and trackpad on 2015-2017 MacBooks and MacBook Pros.
 const SPI_INPUT: &[&str] = &["intel_lpss_pci", "spi_pxa2xx_platform", "applespi"];
 
@@ -36,7 +40,8 @@ const KNOWN: &[Mac] = &[
         model: "iMac14,4",
         name: "21.5-inch iMac, Mid 2014",
         chip: Chip::None,
-        packages: &[],
+        // BCM4360 Wi-Fi, and firmware for the BCM57766 Ethernet port.
+        packages: &[BROADCOM_WL[0], BROADCOM_WL[1], "firmware-misc-nonfree"],
         early_modules: &[],
     },
     Mac {
@@ -104,6 +109,8 @@ mod tests {
         assert!(packages("MacBookPro13,3").contains(&"firmware-amd-graphics"));
         assert!(early_modules("MacBookPro13,3").contains(&"applespi"));
         assert_eq!(packages("Macmini8,1"), COMMON_PACKAGES);
+        let imac = packages("iMac14,4");
+        assert!(imac.contains(&"broadcom-sta-dkms") && imac.contains(&"linux-headers-amd64"));
         assert!(early_modules("Macmini8,1").is_empty());
         assert!(lookup("Macmini8,1").is_none());
     }

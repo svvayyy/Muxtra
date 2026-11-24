@@ -116,6 +116,19 @@ if [ ${#extra[@]} -gt 0 ]; then
   apt_target update -qq
   apt_target install -y -qq "${extra[@]}" >/dev/null
 fi
+# Drivers that are built from source (like Broadcom's wl) must be built for
+# the image's own kernel, not the builder's.
+if [ -x "$TARGET/usr/sbin/dkms" ]; then
+  for kernel in "$TARGET"/lib/modules/*; do
+    in_target dkms autoinstall -k "$(basename "$kernel")" >/dev/null
+  done
+  case " ${extra[*]} " in
+    *" broadcom-sta-dkms "*)
+      find "$TARGET/lib/modules" -name 'wl.ko*' | grep -q . \
+        || { echo "Broadcom's Wi-Fi driver (wl) did not build for this kernel." >&2; exit 1; }
+      ;;
+  esac
+fi
 if [ -n "$TAILSCALE_SERVER" ]; then
   install -d "$TARGET/etc/muxtra"
   printf '%s\n' "$TAILSCALE_SERVER" > "$TARGET/etc/muxtra/tailscale-server"
