@@ -197,22 +197,58 @@ EOF
   in_target systemctl enable muxtra-ssh-host-keys.service >/dev/null
 fi
 
-# Coding agents, installed for the user with their official installers.
-# They update themselves later, in the user's own home folder.
+# Coding agents, installed for the user. They update themselves later, in
+# the user's own home folder.
+user_home="$TARGET/home/$USER_NAME"
+agent_failed() {
+  [ -s /tmp/agent-install.log ] && tail -5 /tmp/agent-install.log >&2
+  echo "$1" >&2
+  exit 1
+}
+
+# Claude Code: the same steps as its official installer (claude.ai/install.sh):
+# the latest version, checked against its published checksum, put where the
+# native install puts it. The installer's last step runs Claude itself, which
+# crashes under the Intel emulation used to build on Apple Silicon, so those
+# few file steps are done here instead.
+install_claude_code() {
+  local base=https://downloads.claude.ai/claude-code-releases version sum dest
+  version=$(curl -fsSL "$base/latest") \
+    || agent_failed "Could not reach Claude Code's download server. Check this Mac's internet connection and build again."
+  [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]] \
+    || agent_failed "Claude Code's download server answered with something that is not a version number."
+  sum=$(curl -fsSL "$base/$version/manifest.json" | tr -d '\n\r\t ' \
+    | grep -o '"linux-x64":{[^{}]*"checksum":"[a-f0-9]\{64\}"' | grep -o '[a-f0-9]\{64\}') \
+    || agent_failed "Could not read the checksum for Claude Code $version."
+  dest="$user_home/.local/share/claude/versions/$version"
+  install -d "$user_home/.local/share/claude/versions" "$user_home/.local/bin"
+  curl -fsSL "$base/$version/linux-x64/claude" -o "$dest" \
+    || agent_failed "Downloading Claude Code $version failed. Check this Mac's internet connection and build again."
+  echo "$sum  $dest" | sha256sum --check --quiet --status \
+    || { rm -f "$dest"; agent_failed "Claude Code $version did not match its published checksum, so it was not installed."; }
+  chmod 0755 "$dest"
+  ln -sfn "/home/$USER_NAME/.local/share/claude/versions/$version" "$user_home/.local/bin/claude"
+  [ -e "$user_home/.claude.json" ] || printf '{\n  "installMethod": "native"\n}\n' > "$user_home/.claude.json"
+  chmod 0600 "$user_home/.claude.json"
+  in_target chown -R "$USER_NAME:$USER_NAME" "/home/$USER_NAME/.local" "/home/$USER_NAME/.claude.json"
+}
+
+# Codex: its official installer, run as the user.
+install_codex() {
+  in_target runuser -u "$USER_NAME" -- env HOME="/home/$USER_NAME" \
+    PATH="/home/$USER_NAME/.local/bin:/usr/local/bin:/usr/bin:/bin" \
+    sh -c "curl -fsSL https://chatgpt.com/codex/install.sh | sh" > /tmp/agent-install.log 2>&1 \
+    || agent_failed "Installing Codex failed. Check this Mac's internet connection and build again."
+}
+
 for agent in "${AGENTS[@]}"; do
   case "$agent" in
-    claude-code) url=https://claude.ai/install.sh; run=bash; cmd=claude ;;
-    codex) url=https://chatgpt.com/codex/install.sh; run=sh; cmd=codex ;;
+    claude-code) install_claude_code; cmd=claude ;;
+    codex) install_codex; cmd=codex ;;
     *) echo "Muxtra does not know how to install \"$agent\"." >&2; exit 1 ;;
   esac
-  if ! in_target runuser -u "$USER_NAME" -- env HOME="/home/$USER_NAME" \
-      PATH="/home/$USER_NAME/.local/bin:/usr/local/bin:/usr/bin:/bin" \
-      sh -c "curl -fsSL $url | $run" > /tmp/agent-install.log 2>&1 \
-      || [ ! -e "$TARGET/home/$USER_NAME/.local/bin/$cmd" ]; then
-    tail -5 /tmp/agent-install.log >&2
-    echo "Installing $cmd failed. The builder downloads it from the internet: check this Mac's connection and build again." >&2
-    exit 1
-  fi
+  # Checked inside the image, where the link's /home/... target exists.
+  in_target test -x "/home/$USER_NAME/.local/bin/$cmd" || agent_failed "$cmd was not installed."
   # Commands run over SSH do not search ~/.local/bin, so link it.
   ln -sf "/home/$USER_NAME/.local/bin/$cmd" "$TARGET/usr/local/bin/$cmd"
 done
