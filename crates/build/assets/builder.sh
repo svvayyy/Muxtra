@@ -116,6 +116,47 @@ if [ ${#extra[@]} -gt 0 ]; then
   apt_target update -qq
   apt_target install -y -qq "${extra[@]}" >/dev/null
 fi
+# T2 Macs: t2bce, the driver stack for everything behind the T2 chip
+# (keyboard, trackpad, camera, audio). Built with DKMS for Debian's own
+# kernel, so kernel updates rebuild it.
+if [ "$WITH_T2BCE" = 1 ]; then
+  t2bce_version="${T2BCE_COMMIT:0:7}"
+  t2bce_src="/usr/src/t2bce-$t2bce_version"
+  curl -fsSL "https://codeload.github.com/deqrocks/t2bce/tar.gz/$T2BCE_COMMIT" -o /tmp/t2bce.tgz \
+    || { echo "Could not download t2bce, the T2 keyboard and trackpad driver. Check this Mac's internet connection and build again." >&2; exit 1; }
+  echo "$T2BCE_SHA256  /tmp/t2bce.tgz" | sha256sum --check --quiet --status \
+    || { echo "The t2bce download did not match its checksum, so it was not used." >&2; exit 1; }
+  install -d "$TARGET$t2bce_src"
+  tar -xzf /tmp/t2bce.tgz -C "$TARGET$t2bce_src" --strip-components=1
+  # Its modules depend on each other: each one is built with the symbols of
+  # the ones before it.
+  cat > "$TARGET$t2bce_src/muxtra-build.sh" <<'EOF'
+#!/bin/sh
+set -e
+k="$1"; here="$(pwd)"
+dma="$here/t2bce_dma/Module.symvers"; core="$here/t2bce_core/Module.symvers"
+make -C t2bce_dma KVERSION="$k"
+make -C t2bce_core KVERSION="$k" T2BCE_DMA_SRC=../t2bce_dma KBUILD_EXTRA_SYMBOLS="$dma"
+make -C t2bce_vhci KVERSION="$k" T2BCE_CORE_SRC=../t2bce_core KBUILD_EXTRA_SYMBOLS="$dma $core"
+make -C t2bce_audio KVERSION="$k" T2BCE_CORE_SRC=../t2bce_core KBUILD_EXTRA_SYMBOLS="$dma $core"
+EOF
+  {
+    echo "PACKAGE_NAME=\"t2bce\""
+    echo "PACKAGE_VERSION=\"$t2bce_version\""
+    echo 'MAKE[0]="sh muxtra-build.sh ${kernelver}"'
+    echo 'CLEAN="true"'
+    i=0
+    for m in t2bce_dma t2bce_core t2bce_vhci t2bce_audio; do
+      echo "BUILT_MODULE_NAME[$i]=\"$m\""
+      echo "BUILT_MODULE_LOCATION[$i]=\"$m\""
+      echo "DEST_MODULE_LOCATION[$i]=\"/updates/dkms\""
+      i=$((i + 1))
+    done
+    echo 'AUTOINSTALL="yes"'
+  } > "$TARGET$t2bce_src/dkms.conf"
+  in_target dkms add -m t2bce -v "$t2bce_version" >/dev/null
+fi
+
 # Drivers that are built from source (like Broadcom's wl) must be built for
 # the image's own kernel, not the builder's.
 if [ -x "$TARGET/usr/sbin/dkms" ]; then
@@ -128,7 +169,12 @@ if [ -x "$TARGET/usr/sbin/dkms" ]; then
         || { echo "Broadcom's Wi-Fi driver (wl) did not build for this kernel." >&2; exit 1; }
       ;;
   esac
+  if [ "$WITH_T2BCE" = 1 ]; then
+    find "$TARGET/lib/modules" -name 't2bce_vhci.ko*' | grep -q . \
+      || { echo "t2bce, the T2 keyboard and trackpad driver, did not build for this kernel." >&2; exit 1; }
+  fi
 fi
+
 if [ -n "$TAILSCALE_SERVER" ]; then
   install -d "$TARGET/etc/muxtra"
   printf '%s\n' "$TAILSCALE_SERVER" > "$TARGET/etc/muxtra/tailscale-server"
@@ -352,6 +398,9 @@ if [ "$WITH_WIFI" = 1 ] && [ -n "$WIFI_COUNTRY" ]; then
   # Wi-Fi rules for this country. Some Broadcom chips (2016 MacBook Pro)
   # fail to connect under the default worldwide rules.
   cmdline="$cmdline cfg80211.ieee80211_regdom=$WIFI_COUNTRY"
+fi
+if [ -n "$KERNEL_ARGS" ]; then
+  cmdline="$cmdline $KERNEL_ARGS"
 fi
 echo "$cmdline" > "$TARGET/etc/kernel/cmdline"
 echo muxtra > "$TARGET/etc/kernel/entry-token"

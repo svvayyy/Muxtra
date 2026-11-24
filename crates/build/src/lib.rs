@@ -240,6 +240,18 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
         .map(|m| m.to_string())
         .collect();
     config.push_str(&format!("HW_PACKAGES=({})\n", quote_list(&hw_packages)));
+    let t2 = hardware::is_t2(&manifest.system.mac);
+    config.push_str(&format!("WITH_T2BCE={}\n", quote(flag(t2))));
+    if t2 {
+        config.push_str(&format!("T2BCE_COMMIT={}\n", quote(hardware::T2BCE_COMMIT)));
+        config.push_str(&format!("T2BCE_SHA256={}\n", quote(hardware::T2BCE_SHA256)));
+    }
+    let kernel_args = if t2 {
+        hardware::T2_KERNEL_ARGS.join(" ")
+    } else {
+        String::new()
+    };
+    config.push_str(&format!("KERNEL_ARGS={}\n", quote(&kernel_args)));
     config.push_str(&format!("EARLY_MODULES=({})\n", quote_list(&early)));
     let with_wifi = network.contains(&Network::Wifi);
     let wifi_files: Vec<String> = if with_wifi {
@@ -538,6 +550,24 @@ mod tests {
             "{}",
             p.modules_label
         );
+    }
+
+    #[test]
+    fn t2_macs_get_t2bce_and_kernel_options() {
+        let p = plan(
+            &manifest(&AGENT.replace("iMac14,4", "MacBookPro16,1")),
+            &inputs(),
+        )
+        .unwrap();
+        assert!(p.config_sh.contains("WITH_T2BCE='1'\n"));
+        assert!(p.config_sh.contains("T2BCE_SHA256="));
+        assert!(
+            p.config_sh
+                .contains("KERNEL_ARGS='intel_iommu=on iommu=pt pcie_ports=compat'\n")
+        );
+        let p = plan(&manifest(AGENT), &inputs()).unwrap();
+        assert!(p.config_sh.contains("WITH_T2BCE='0'\n"));
+        assert!(p.config_sh.contains("KERNEL_ARGS=''\n"));
     }
 
     #[test]
