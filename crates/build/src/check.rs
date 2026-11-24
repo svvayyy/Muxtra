@@ -101,7 +101,10 @@ pub fn probe_script(manifest: &Manifest) -> String {
              fact wifi-iface \"$wl\"\n\
              if [ -n \"$wl\" ]; then\n\
                fact wifi-ssid \"$(iwctl station \"$wl\" show 2>/dev/null | sed 's/\\x1b\\[[0-9;]*m//g' | sed -n 's/^ *Connected network  *//p')\"\n\
-               fact wifi-signal \"$(awk -v i=\"$wl:\" '$1==i{print int($4)}' /proc/net/wireless)\"\n\
+               sig=$(awk -v i=\"$wl:\" '$1==i{print int($4)}' /proc/net/wireless)\n\
+               # Some drivers (like Broadcom's wl) leave that table empty. Ask iwd.\n\
+               [ -n \"$sig\" ] && [ \"$sig\" != 0 ] || sig=$(iwctl station \"$wl\" show 2>/dev/null | sed 's/\\x1b\\[[0-9;]*m//g' | sed -n 's/^ *RSSI  *\\(-[0-9]*\\) dBm.*/\\1/p')\n\
+               fact wifi-signal \"$sig\"\n\
              fi\n",
         );
     }
@@ -702,6 +705,10 @@ mod tests {
         assert!(script.contains("pkg:git"));
         assert!(!script.contains("pkg:node"));
         assert!(script.contains("mosh-server"));
+        assert!(
+            script.contains("RSSI"),
+            "falls back to iwd for the Wi-Fi signal"
+        );
     }
 
     #[test]
