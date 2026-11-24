@@ -82,6 +82,46 @@ pub struct Modules {
     /// Software installed out of the box, by name.
     #[serde(default)]
     pub tools: Vec<String>,
+    /// Coding agents installed for the user, signed in later with
+    /// `muxtra claude login` or `muxtra codex login`.
+    #[serde(default)]
+    pub agents: Vec<Agent>,
+}
+
+/// A coding agent Muxtra can install.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Agent {
+    /// Anthropic's Claude Code.
+    ClaudeCode,
+    /// OpenAI's Codex CLI.
+    Codex,
+}
+
+impl Agent {
+    /// The name used in muxtra.toml.
+    pub fn id(self) -> &'static str {
+        match self {
+            Agent::ClaudeCode => "claude-code",
+            Agent::Codex => "codex",
+        }
+    }
+
+    /// The name people know it by.
+    pub fn name(self) -> &'static str {
+        match self {
+            Agent::ClaudeCode => "Claude Code",
+            Agent::Codex => "Codex",
+        }
+    }
+
+    /// The command it installs.
+    pub fn command(self) -> &'static str {
+        match self {
+            Agent::ClaudeCode => "claude",
+            Agent::Codex => "codex",
+        }
+    }
 }
 
 /// How the machine connects.
@@ -253,6 +293,7 @@ impl Manifest {
             ("modules.network", count_dupes(&self.modules.network)),
             ("modules.remote", count_dupes(&self.modules.remote)),
             ("modules.tools", count_dupes(&self.modules.tools)),
+            ("modules.agents", count_dupes(&self.modules.agents)),
             ("boot.start", count_dupes(&self.boot.start)),
             ("boot.locked", count_dupes(&self.boot.locked)),
         ] {
@@ -516,6 +557,27 @@ locked = ["bootloader", "kernel"]
         assert!(problems(&good).is_empty());
         let bad = format!("{AGENT_BOX}\n[tailscale]\nserver = \"headscale.example.com\"\n");
         assert_eq!(problems(&bad), ["tailscale.server"]);
+    }
+
+    #[test]
+    fn agents_are_optional_and_checked() {
+        let m = Manifest::parse(AGENT_BOX).unwrap();
+        assert!(m.modules.agents.is_empty());
+        let with_agents = with(
+            "tools   = [\"git\", \"node\"]",
+            "tools   = [\"git\", \"node\"]\nagents  = [\"claude-code\", \"codex\"]",
+        );
+        let m = Manifest::parse(&with_agents).unwrap();
+        assert_eq!(m.modules.agents, [Agent::ClaudeCode, Agent::Codex]);
+        assert_eq!(Agent::ClaudeCode.command(), "claude");
+        let twice = with_agents.replace("[\"claude-code\", \"codex\"]", "[\"codex\", \"codex\"]");
+        assert_eq!(problems(&twice), ["modules.agents"]);
+        let unknown = with_agents.replace("\"codex\"]", "\"gemini\"]");
+        let err = Manifest::parse(&unknown).unwrap_err().to_string();
+        assert!(
+            err.contains("claude-code") && err.contains("codex"),
+            "{err}"
+        );
     }
 
     #[test]
