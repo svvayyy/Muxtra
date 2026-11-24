@@ -15,7 +15,10 @@ Muxtra handles the hard part of running Linux on a Mac (drivers, firmware, and m
 - `muxtra wifi` saves Wi-Fi networks (only the derived key is stored), and `muxtra tailscale login` signs the Mac in to Tailscale with a link.
 - Every command has a plain mode for agents, and `--json` where it reports results.
 
-Tested on real hardware: the 15-inch 2016 MacBook Pro (`MacBookPro13,3`, T1) boots from USB, joins Wi-Fi on its own, and signs in to Tailscale.
+Tested on real hardware, booting from USB and joining Wi-Fi on their own:
+
+- 15-inch MacBook Pro, 2016 (`MacBookPro13,3`, T1), also signed in to Tailscale
+- 21.5-inch iMac, Mid 2014 (`iMac14,4`, no T chip)
 
 ## Goals
 
