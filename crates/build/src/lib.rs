@@ -92,6 +92,9 @@ pub struct Inputs {
     /// Save logs to the boot partition every minute, for debugging on
     /// Macs that cannot be reached over the network yet.
     pub debug_logs: bool,
+    /// Fingerprint of Apple's Wi-Fi firmware, packed for the builder, when
+    /// `muxtra firmware` has copied it (T2 Macs need it).
+    pub apple_firmware: Option<String>,
 }
 
 /// Works out every setting for the builder.
@@ -115,6 +118,13 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
         return Err(PlanError(
             "muxtra.toml says there is a password, but muxtra.secrets has none. Run `muxtra passwd` to set it again, or `muxtra passwd --remove`.".to_string(),
         ));
+    }
+    let t2 = hardware::is_t2(&manifest.system.mac);
+    if t2 && network.contains(&Network::Wifi) && inputs.apple_firmware.is_none() {
+        let model = hardware::lookup(&manifest.system.mac).map_or("This Mac", |m| m.name);
+        return Err(PlanError(format!(
+            "The {model}'s Wi-Fi needs Apple's firmware, which only its macOS has. While it still runs macOS, run `muxtra firmware --from <that Mac>`, then build again."
+        )));
     }
     if has(Remote::Ssh) && inputs.ssh_keys.is_empty() {
         return Err(PlanError(
@@ -252,6 +262,10 @@ pub fn plan(manifest: &Manifest, inputs: &Inputs) -> Result<Plan, PlanError> {
         String::new()
     };
     config.push_str(&format!("KERNEL_ARGS={}\n", quote(&kernel_args)));
+    config.push_str(&format!(
+        "APPLE_FIRMWARE={}\n",
+        quote(inputs.apple_firmware.as_deref().unwrap_or(""))
+    ));
     config.push_str(&format!("EARLY_MODULES=({})\n", quote_list(&early)));
     let with_wifi = network.contains(&Network::Wifi);
     let wifi_files: Vec<String> = if with_wifi {
@@ -553,10 +567,16 @@ mod tests {
     }
 
     #[test]
-    fn t2_macs_get_t2bce_and_kernel_options() {
+    fn t2_macs_get_t2bce_kernel_options_and_need_apple_firmware() {
+        let m = manifest(&AGENT.replace("iMac14,4", "MacBookPro16,1"));
+        let err = plan(&m, &inputs()).unwrap_err().to_string();
+        assert!(err.contains("muxtra firmware --from"), "{err}");
         let p = plan(
-            &manifest(&AGENT.replace("iMac14,4", "MacBookPro16,1")),
-            &inputs(),
+            &m,
+            &Inputs {
+                apple_firmware: Some("0123abcd".into()),
+                ..inputs()
+            },
         )
         .unwrap();
         assert!(p.config_sh.contains("WITH_T2BCE='1'\n"));
@@ -565,6 +585,8 @@ mod tests {
             p.config_sh
                 .contains("KERNEL_ARGS='intel_iommu=on iommu=pt pcie_ports=compat'\n")
         );
+        assert!(p.config_sh.contains("APPLE_FIRMWARE='0123abcd'\n"));
+        // Other Macs get none of it.
         let p = plan(&manifest(AGENT), &inputs()).unwrap();
         assert!(p.config_sh.contains("WITH_T2BCE='0'\n"));
         assert!(p.config_sh.contains("KERNEL_ARGS=''\n"));

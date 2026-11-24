@@ -8,6 +8,7 @@ mod agents;
 mod build;
 mod check;
 mod files;
+mod firmware;
 mod host;
 mod keys;
 mod new;
@@ -56,6 +57,8 @@ enum Command {
     Wifi(wifi::WifiArgs),
     /// Sign the Mac in to Tailscale, so you can reach it from anywhere
     Tailscale(tailscale::TailscaleArgs),
+    /// Copy Apple's Wi-Fi firmware from a T2 Mac's own macOS
+    Firmware(firmware::FirmwareArgs),
     /// Sign Claude Code on the Mac in to your account
     Claude(agents::AgentArgs),
     /// Sign Codex on the Mac in to your account
@@ -100,6 +103,7 @@ fn main() -> ExitCode {
         Command::Passwd(args) => passwd::run(args),
         Command::Wifi(args) => wifi::run(args),
         Command::Tailscale(args) => tailscale::run(args),
+        Command::Firmware(args) => firmware::run(args),
         Command::Claude(args) => agents::run(muxtra_manifest::Agent::ClaudeCode, args),
         Command::Codex(args) => agents::run(muxtra_manifest::Agent::Codex, args),
         Command::Build(args) => build::run(args),

@@ -47,6 +47,8 @@ pub struct Prepared {
     pub plan: Plan,
     /// Private keys that go with the installed public keys.
     pub identities: Vec<PathBuf>,
+    /// Apple's Wi-Fi firmware for T2 Macs, packed for the builder.
+    pub apple_firmware: Option<Vec<u8>>,
 }
 
 impl Prepared {
@@ -108,6 +110,17 @@ pub fn prepare(manifest: &Path) -> Result<Prepared, Failure> {
     } else {
         None
     };
+    // T2 Macs: Apple's Wi-Fi firmware, when `muxtra firmware` has copied it.
+    let apple_firmware = if muxtra_build::hardware::is_t2(&manifest.system.mac)
+        && manifest
+            .modules
+            .network
+            .contains(&muxtra_manifest::Network::Wifi)
+    {
+        crate::firmware::packed(&dir)?
+    } else {
+        None
+    };
     let plan = muxtra_build::plan(
         &manifest,
         &muxtra_build::Inputs {
@@ -117,6 +130,9 @@ pub fn prepare(manifest: &Path) -> Result<Prepared, Failure> {
             wifi_country: wifi_country(),
             // Hidden switch for testing on Macs that are not online yet.
             debug_logs: std::env::var_os("MUXTRA_DEBUG_LOGS").is_some_and(|v| v == "1"),
+            apple_firmware: apple_firmware
+                .as_deref()
+                .map(muxtra_build::apple_firmware::digest),
         },
     )?;
     Ok(Prepared {
@@ -124,6 +140,7 @@ pub fn prepare(manifest: &Path) -> Result<Prepared, Failure> {
         dir,
         plan,
         identities: keys.identities,
+        apple_firmware,
     })
 }
 
@@ -194,6 +211,10 @@ pub fn build_image(p: &Prepared, yes: bool) -> Result<PathBuf, Failure> {
         work.join("seed/meta-data"),
         muxtra_build::meta_data(&instance),
     )?;
+    if let Some(firmware) = &p.apple_firmware {
+        // Goes on the setup disc. A short name, so every disc format keeps it.
+        fs::write(work.join("seed/firmware.tar"), firmware)?;
+    }
     let seed = work.join("seed.iso");
     host::make_seed_iso(&work.join("seed"), &seed)?;
 

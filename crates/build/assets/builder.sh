@@ -175,6 +175,17 @@ if [ -x "$TARGET/usr/sbin/dkms" ]; then
   fi
 fi
 
+# Apple's Wi-Fi firmware for T2 Macs, copied by `muxtra firmware` from the
+# Mac's own macOS and handed over on the setup disc. Never downloaded.
+if [ -n "$APPLE_FIRMWARE" ]; then
+  seed_dev=$(blkid -L cidata || blkid -L CIDATA || echo /dev/sr0)
+  install -d /run/muxtra-seed "$TARGET/lib/firmware/brcm"
+  mount -o ro "$seed_dev" /run/muxtra-seed
+  fw=$(ls /run/muxtra-seed | grep -i '^firmware\.tar$' | head -1 || true)
+  [ -n "$fw" ] || { echo "Apple's Wi-Fi firmware is missing from the setup disc." >&2; exit 1; }
+  tar -xf "/run/muxtra-seed/$fw" -C "$TARGET/lib/firmware/brcm"
+  umount /run/muxtra-seed
+fi
 if [ -n "$TAILSCALE_SERVER" ]; then
   install -d "$TARGET/etc/muxtra"
   printf '%s\n' "$TAILSCALE_SERVER" > "$TARGET/etc/muxtra/tailscale-server"
