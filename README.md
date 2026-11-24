@@ -13,6 +13,7 @@ Muxtra handles the hard part of running Linux on a Mac (drivers, firmware, and m
 - `muxtra check` boots the image in a virtual Mac and reports what works in plain English. `muxtra check --real` runs the same report on the real Mac over SSH.
 - `muxtra poof` puts the image on a USB stick for the Mac to boot from.
 - `muxtra wifi` saves Wi-Fi networks (only the derived key is stored), and `muxtra tailscale login` signs the Mac in to Tailscale with a link.
+- The default `agent` starter installs Claude Code and Codex. `muxtra claude login` and `muxtra codex login` sign them in to your account with a link, with no API keys stored anywhere.
 - Every command has a plain mode for agents, and `--json` where it reports results.
 
 Tested on real hardware, booting from USB and joining Wi-Fi on their own:
