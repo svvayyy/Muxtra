@@ -18,6 +18,8 @@ pub enum Status {
     RealMac,
     /// Ready, but something has to be plugged in or saved to test it.
     Untested,
+    /// Muxtra knows this part cannot work on this Mac model.
+    Unsupported,
 }
 
 impl Status {
@@ -27,6 +29,7 @@ impl Status {
             Status::Fail => "fail",
             Status::RealMac => "needs-real-mac",
             Status::Untested => "untested",
+            Status::Unsupported => "unsupported",
         }
     }
 }
@@ -451,50 +454,68 @@ pub fn report(
     }
     if network.contains(&Network::Thunderbolt) {
         let tb_net = fact("tb-net");
-        out.push(if !seen.real {
-            Check::new(
-                "Thunderbolt",
-                Status::RealMac,
-                "can't be tested in a VM, needs a real Mac",
-            )
-        } else if !tb_net.is_empty() {
-            Check::new(
-                "Thunderbolt",
-                Status::Pass,
-                format!("cable connected ({tb_net})"),
-            )
-        } else if fact("tb-driver") != "yes" {
-            Check::new(
-                "Thunderbolt",
-                Status::Fail,
-                "the Thunderbolt networking driver is missing",
-            )
-        } else if fact("tb-domains").parse::<u32>().unwrap_or(0) == 0 {
-            Check::new(
-                "Thunderbolt",
-                Status::Fail,
-                "no Thunderbolt controller found",
-            )
-        } else {
-            Check::new(
-                "Thunderbolt",
-                Status::Untested,
-                "ready. Plug in a Thunderbolt cable to another Mac to test it",
-            )
-        });
+        out.push(
+            if let Some(why) = crate::hardware::no_thunderbolt(&manifest.system.mac) {
+                Check::new(
+                    "Thunderbolt",
+                    Status::Unsupported,
+                    format!("not supported on this Mac: {why}"),
+                )
+            } else if !seen.real {
+                Check::new(
+                    "Thunderbolt",
+                    Status::RealMac,
+                    "can't be tested in a VM, needs a real Mac",
+                )
+            } else if !tb_net.is_empty() {
+                Check::new(
+                    "Thunderbolt",
+                    Status::Pass,
+                    format!("cable connected ({tb_net})"),
+                )
+            } else if fact("tb-driver") != "yes" {
+                Check::new(
+                    "Thunderbolt",
+                    Status::Fail,
+                    "the Thunderbolt networking driver is missing",
+                )
+            } else if fact("tb-domains").parse::<u32>().unwrap_or(0) == 0 {
+                Check::new(
+                    "Thunderbolt",
+                    Status::Fail,
+                    "no Thunderbolt controller found",
+                )
+            } else {
+                Check::new(
+                    "Thunderbolt",
+                    Status::Untested,
+                    "ready. Plug in a Thunderbolt cable to another Mac to test it",
+                )
+            },
+        );
     }
     out
 }
 
-/// Counts for the summary line: (passed, failed, need a real Mac, untested).
-pub fn tally(checks: &[Check]) -> (usize, usize, usize, usize) {
+/// How many rows came out each way, for the summary line.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Tally {
+    pub passed: usize,
+    pub failed: usize,
+    pub real_mac: usize,
+    pub untested: usize,
+    pub unsupported: usize,
+}
+
+pub fn tally(checks: &[Check]) -> Tally {
     let count = |s: Status| checks.iter().filter(|c| c.status == s).count();
-    (
-        count(Status::Pass),
-        count(Status::Fail),
-        count(Status::RealMac),
-        count(Status::Untested),
-    )
+    Tally {
+        passed: count(Status::Pass),
+        failed: count(Status::Fail),
+        real_mac: count(Status::RealMac),
+        untested: count(Status::Untested),
+        unsupported: count(Status::Unsupported),
+    }
 }
 
 #[cfg(test)]
@@ -559,7 +580,14 @@ mod tests {
                 "Thunderbolt"
             ]
         );
-        assert_eq!(tally(&checks), (11, 0, 2, 0));
+        let t = tally(&checks);
+        assert_eq!(
+            (t.passed, t.failed, t.real_mac, t.unsupported),
+            (11, 0, 1, 1)
+        );
+        let tb = checks.iter().find(|c| c.name == "Thunderbolt").unwrap();
+        assert_eq!(tb.status, Status::Unsupported);
+        assert!(tb.detail.contains("no Linux driver"));
         let memory = checks.iter().find(|c| c.name == "Memory").unwrap();
         assert_eq!(memory.detail, "239 MB used of 1.9 GB at idle");
         let tailscale = checks.iter().find(|c| c.name == "Tailscale").unwrap();
@@ -587,7 +615,7 @@ mod tests {
             "v20.19.2, but muxtra.toml asks for Node 26"
         );
         assert_eq!(detail("Tools").detail, "missing: git");
-        assert_eq!(tally(&checks).1, 3);
+        assert_eq!(tally(&checks).failed, 3);
     }
 
     fn real_mac() -> BTreeMap<String, String> {
@@ -634,12 +662,13 @@ mod tests {
             "1.1 GB used, slot A only (this drive has no room for B)"
         );
         assert!(row("Tailscale").detail.contains("muxtra tailscale login"));
-        assert_eq!(tally(&checks), (13, 0, 0, 1));
+        let t = tally(&checks);
+        assert_eq!((t.passed, t.failed, t.untested), (13, 0, 1));
     }
 
     #[test]
     fn real_mac_problems() {
-        let (m, p) = setup(AGENT_BOX);
+        let (m, p) = setup(&AGENT_BOX.replace("iMac14,4", "MacBookPro14,3"));
         let mut facts = real_mac();
         facts.insert("wifi-ssid".into(), "".into());
         facts.insert("tb-domains".into(), "0".into());
@@ -650,7 +679,7 @@ mod tests {
         assert!(row("Wi-Fi").detail.starts_with("not connected"));
         assert_eq!(row("Thunderbolt").detail, "no Thunderbolt controller found");
         assert_eq!(row("Internet").status, Status::Fail);
-        assert_eq!(tally(&checks).1, 4);
+        assert_eq!(tally(&checks).failed, 4);
         assert_eq!(running_for(7500), "2 h 5 min");
     }
 

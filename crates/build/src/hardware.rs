@@ -23,6 +23,8 @@ pub struct Mac {
     pub packages: &'static [&'static str],
     /// Drivers loaded early, so the built-in keyboard works at the login prompt.
     pub early_modules: &'static [&'static str],
+    /// Why Thunderbolt networking cannot work on this model, if it cannot.
+    pub no_thunderbolt: Option<&'static str>,
 }
 
 /// Every Intel Mac gets these.
@@ -43,6 +45,9 @@ const KNOWN: &[Mac] = &[
         // BCM4360 Wi-Fi, and firmware for the BCM57766 Ethernet port.
         packages: &[BROADCOM_WL[0], BROADCOM_WL[1], "firmware-misc-nonfree"],
         early_modules: &[],
+        // Thunderbolt 2 "Redwood Ridge" (8086:1568), which Linux's
+        // Thunderbolt driver does not support.
+        no_thunderbolt: Some("its Thunderbolt 2 chip has no Linux driver"),
     },
     Mac {
         model: "MacBookPro13,3",
@@ -50,6 +55,7 @@ const KNOWN: &[Mac] = &[
         chip: Chip::T1,
         packages: &["firmware-amd-graphics"],
         early_modules: SPI_INPUT,
+        no_thunderbolt: None,
     },
     Mac {
         model: "MacBookPro14,3",
@@ -57,6 +63,7 @@ const KNOWN: &[Mac] = &[
         chip: Chip::T1,
         packages: &["firmware-amd-graphics"],
         early_modules: SPI_INPUT,
+        no_thunderbolt: None,
     },
     Mac {
         model: "MacBookPro15,1",
@@ -64,6 +71,7 @@ const KNOWN: &[Mac] = &[
         chip: Chip::T2,
         packages: &["firmware-amd-graphics"],
         early_modules: &[],
+        no_thunderbolt: None,
     },
     Mac {
         model: "MacBookPro16,1",
@@ -71,6 +79,7 @@ const KNOWN: &[Mac] = &[
         chip: Chip::T2,
         packages: &["firmware-amd-graphics"],
         early_modules: &[],
+        no_thunderbolt: None,
     },
 ];
 
@@ -93,6 +102,12 @@ pub fn packages(model: &str) -> Vec<&'static str> {
     out
 }
 
+/// Why Thunderbolt networking cannot work on a model, if Muxtra knows it
+/// cannot. Unknown models are assumed to work.
+pub fn no_thunderbolt(model: &str) -> Option<&'static str> {
+    lookup(model).and_then(|m| m.no_thunderbolt)
+}
+
 /// Drivers to load early for a model.
 pub fn early_modules(model: &str) -> &'static [&'static str] {
     lookup(model).map_or(&[], |m| m.early_modules)
@@ -111,6 +126,9 @@ mod tests {
         assert_eq!(packages("Macmini8,1"), COMMON_PACKAGES);
         let imac = packages("iMac14,4");
         assert!(imac.contains(&"broadcom-sta-dkms") && imac.contains(&"linux-headers-amd64"));
+        assert!(no_thunderbolt("iMac14,4").is_some());
+        assert!(no_thunderbolt("MacBookPro13,3").is_none());
+        assert!(no_thunderbolt("Macmini8,1").is_none());
         assert!(early_modules("Macmini8,1").is_empty());
         assert!(lookup("Macmini8,1").is_none());
     }

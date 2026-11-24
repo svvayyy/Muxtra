@@ -168,7 +168,8 @@ pub fn run(args: CheckArgs) -> Result<(), Failure> {
     }
 
     let checks = probe::report(&p.manifest, &p.plan, &seen, &facts);
-    let (passed, failed, real_mac, untested) = probe::tally(&checks);
+    let counts = probe::tally(&checks);
+    let (passed, failed) = (counts.passed, counts.failed);
     let ssh_command = format!(
         "ssh -p {port} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {user}@127.0.0.1"
     );
@@ -185,8 +186,9 @@ pub fn run(args: CheckArgs) -> Result<(), Failure> {
             "image": p.image(),
             "passed": passed,
             "failed": failed,
-            "needs_real_mac": real_mac,
-            "untested": untested,
+            "needs_real_mac": counts.real_mac,
+            "untested": counts.untested,
+            "unsupported": counts.unsupported,
             "seconds": started.elapsed().as_secs(),
             "checks": rows,
         });
@@ -199,12 +201,7 @@ pub fn run(args: CheckArgs) -> Result<(), Failure> {
             serde_json::to_string_pretty(&doc).expect("JSON always serializes")
         );
     } else {
-        print_report(
-            &checks,
-            (passed, failed, real_mac, untested),
-            started.elapsed(),
-            false,
-        );
+        print_report(&checks, counts, started.elapsed(), false);
     }
 
     if !seen.ssh || seen.boot_seconds.is_none() {
@@ -276,7 +273,7 @@ fn run_real(args: CheckArgs) -> Result<(), Failure> {
     let facts = probe::parse_facts(&output);
     let checks = probe::report(&p.manifest, &p.plan, &seen, &facts);
     let counts = probe::tally(&checks);
-    let (passed, failed, _, untested) = counts;
+    let (passed, failed) = (counts.passed, counts.failed);
 
     if args.json {
         let rows: Vec<_> = checks
@@ -291,7 +288,8 @@ fn run_real(args: CheckArgs) -> Result<(), Failure> {
             "host": mac.target,
             "passed": passed,
             "failed": failed,
-            "untested": untested,
+            "untested": counts.untested,
+            "unsupported": counts.unsupported,
             "seconds": started.elapsed().as_secs(),
             "checks": rows,
         });
@@ -308,27 +306,27 @@ fn run_real(args: CheckArgs) -> Result<(), Failure> {
     Ok(())
 }
 
-/// Prints the rows and summary. `counts` is (passed, failed, need a real
-/// Mac, untested), from `tally`.
-fn print_report(
-    checks: &[Check],
-    counts: (usize, usize, usize, usize),
-    took: Duration,
-    real: bool,
-) {
-    let (passed, failed, real_mac, untested) = counts;
+/// Prints the rows and summary.
+fn print_report(checks: &[Check], counts: probe::Tally, took: Duration, real: bool) {
+    let probe::Tally {
+        passed,
+        failed,
+        real_mac,
+        untested,
+        unsupported,
+    } = counts;
     let o = style::out();
     println!();
     for c in checks {
         let (mark, role) = match c.status {
             Status::Pass => ("✓", Role::Ok),
             Status::Fail => ("✗", Role::Err),
-            Status::RealMac | Status::Untested => ("!", Role::Warn),
+            Status::RealMac | Status::Untested | Status::Unsupported => ("!", Role::Warn),
         };
         let detail_role = match c.status {
             Status::Pass => Role::Dim,
             Status::Fail => Role::Err,
-            Status::RealMac | Status::Untested => Role::Warn,
+            Status::RealMac | Status::Untested | Status::Unsupported => Role::Warn,
         };
         println!(
             "{} {} {}",
@@ -346,6 +344,9 @@ fn print_report(
     }
     if untested > 0 {
         summary.push(format!("{untested} untested"));
+    }
+    if unsupported > 0 {
+        summary.push(format!("{unsupported} not supported on this Mac"));
     }
     println!(
         "\n{}. {}",
