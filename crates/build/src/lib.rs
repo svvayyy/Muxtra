@@ -8,6 +8,7 @@ use muxtra_manifest::{Agent, Manifest, Network, Remote};
 use std::fmt;
 
 pub mod agents;
+pub mod apple_firmware;
 pub mod check;
 pub mod disk;
 pub mod hardware;
