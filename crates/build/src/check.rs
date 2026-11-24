@@ -6,7 +6,7 @@
 //! is tested without either.
 
 use crate::Plan;
-use muxtra_manifest::{Manifest, Network, Remote};
+use muxtra_manifest::{Agent, Manifest, Network, Remote};
 use std::collections::BTreeMap;
 
 /// How one check came out.
@@ -127,6 +127,22 @@ pub fn probe_script(manifest: &Manifest) -> String {
     }
     if manifest.modules.remote.contains(&Remote::Mosh) {
         s.push_str("command -v mosh-server >/dev/null && fact mosh yes\n");
+    }
+    for agent in &manifest.modules.agents {
+        let (id, cmd) = (agent.id(), agent.command());
+        // Version, and 1 when signed in. The installers use ~/.local/bin.
+        let signed_in = match agent {
+            Agent::ClaudeCode => {
+                "claude auth status --json 2>/dev/null | grep -q '\"loggedIn\": *true'"
+            }
+            Agent::Codex => "codex login status >/dev/null 2>&1",
+        };
+        s.push_str(&format!(
+            "if PATH=\"$HOME/.local/bin:$PATH\" command -v {cmd} >/dev/null; then\n\
+             \x20 fact agent:{id} \"$(PATH=\"$HOME/.local/bin:$PATH\" {cmd} --version 2>/dev/null | grep -o '[0-9][0-9.]*' | head -1)\"\n\
+             \x20 (PATH=\"$HOME/.local/bin:$PATH\"; {signed_in}) && fact agent-in:{id} 1\n\
+             fi\n"
+        ));
     }
     for pkg in tool_packages(manifest) {
         s.push_str(&format!(
@@ -321,6 +337,31 @@ pub fn report(
                 "installed, not signed in yet. Run `muxtra tailscale login`",
             ),
             (false, _) => Check::new("Tailscale", Status::Pass, "installed, not signed in yet"),
+        });
+    }
+
+    for agent in &manifest.modules.agents {
+        let version = fact(&format!("agent:{}", agent.id()));
+        let signed_in = fact(&format!("agent-in:{}", agent.id())) == "1";
+        out.push(if version.is_empty() {
+            Check::new(agent.name(), Status::Fail, "not installed")
+        } else if signed_in {
+            Check::new(agent.name(), Status::Pass, format!("{version}, signed in"))
+        } else if seen.real {
+            Check::new(
+                agent.name(),
+                Status::Pass,
+                format!(
+                    "{version}, not signed in yet. Run `muxtra {} login`",
+                    agent.command()
+                ),
+            )
+        } else {
+            Check::new(
+                agent.name(),
+                Status::Pass,
+                format!("{version}, not signed in yet"),
+            )
         });
     }
 
@@ -544,7 +585,8 @@ mod tests {
             "state\trunning\nfailed\t\nrunning\t21\nhostname\tagent-box\nmemory\t239\ndisk\t1100\n\
              parts\tmuxtra-efi,muxtra-root-a,muxtra-root-b,muxtra-home\nsudo\tnopass\nservice:ssh\tactive\nservice:tailscaled\tactive\nnode\tv26.13.1\n\
              tailscale\t1.104.7\ntailscale-state\tNeedsLogin\nmosh\tyes\npkg:git\tinstall ok installed\n\
-             service:iwd\tactive\nwifi-networks\t1\ninternet\tyes\nmemtotal\t1967\n",
+             service:iwd\tactive\nwifi-networks\t1\ninternet\tyes\nmemtotal\t1967\n\
+             agent:claude-code\t2.1.331\nagent:codex\t0.172.0\nagent-in:codex\t1\n",
         )
     }
 
@@ -571,6 +613,8 @@ mod tests {
                 "Internet",
                 "Node",
                 "Tailscale",
+                "Claude Code",
+                "Codex",
                 "mosh",
                 "Tools",
                 "sudo",
@@ -583,8 +627,14 @@ mod tests {
         let t = tally(&checks);
         assert_eq!(
             (t.passed, t.failed, t.real_mac, t.unsupported),
-            (11, 0, 1, 1)
+            (13, 0, 1, 1)
         );
+        let detail = |n: &str| checks.iter().find(|c| c.name == n).unwrap().detail.clone();
+        assert_eq!(detail("Claude Code"), "2.1.331, not signed in yet");
+        assert_eq!(detail("Codex"), "0.172.0, signed in");
+        let script = probe_script(&m);
+        assert!(script.contains("fact agent:claude-code"));
+        assert!(script.contains("codex login status"));
         let tb = checks.iter().find(|c| c.name == "Thunderbolt").unwrap();
         assert_eq!(tb.status, Status::Unsupported);
         assert!(tb.detail.contains("no Linux driver"));
@@ -663,7 +713,8 @@ mod tests {
         );
         assert!(row("Tailscale").detail.contains("muxtra tailscale login"));
         let t = tally(&checks);
-        assert_eq!((t.passed, t.failed, t.untested), (13, 0, 1));
+        assert_eq!((t.passed, t.failed, t.untested), (15, 0, 1));
+        assert!(row("Claude Code").detail.contains("muxtra claude login"));
     }
 
     #[test]
